@@ -1,65 +1,54 @@
 """
 Build FAISS vector store from ProgramDocument table for RAG retrieval.
-Uses configurable paths from src.config (FAISS_PATH, DATA_DIR) for Docker compatibility.
+Embedding provider is selected via EMBEDDING_PROVIDER env var ('openai' | 'ollama').
 """
 import logging
+import os
 from pathlib import Path
 from typing import List
-import os
 
 from dotenv import load_dotenv
-
-logger = logging.getLogger(__name__)
-from sqlmodel import Session, select
-from src.config import settings
-from src.db.session import engine
-from src.db.models import ProgramDocument
-
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from sqlmodel import Session, select
+
+from src.config import settings
+from src.db.models import ProgramDocument
+from src.db.session import engine
+from src.qa.providers import get_embeddings
 
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is not set in the environment or .env file.")
+
+logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------
-# Load documents from PostgreSQL
-# ---------------------------------------------------------
+def _check_openai_key():
+    """Raise early if OpenAI is the embedding provider but no key is set."""
+    if os.getenv("EMBEDDING_PROVIDER", "openai").lower() == "openai":
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set. Set it or switch EMBEDDING_PROVIDER=ollama.")
+
+
 def load_documents() -> List[dict]:
-    """
-    Loads all ProgramDocument entries from the database.
-    Returns a list of dicts with id, section_name, and content.
-    """
+    """Load all ProgramDocument rows from the database."""
     with Session(engine) as session:
-        stmt = select(ProgramDocument)
-        rows = session.exec(stmt).all()
+        rows = session.exec(select(ProgramDocument)).all()
 
-    documents = []
-    for row in rows:
-        documents.append(
-            {
-                "id": row.id,
-                "program_id": row.program_id,
-                "section_name": row.section_name,
-                "content": row.content,
-            }
-        )
-
+    documents = [
+        {
+            "id": row.id,
+            "program_id": row.program_id,
+            "section_name": row.section_name,
+            "content": row.content,
+        }
+        for row in rows
+    ]
     logger.info("Loaded %d documents from ProgramDocument.", len(documents))
     return documents
 
 
-# ---------------------------------------------------------
-# Chunking (split long text into smaller pieces)
-# ---------------------------------------------------------
 def chunk_documents(documents: List[dict]):
-    """
-    Splits each document into smaller chunks using a text splitter.
-    Returns a list of LangChain Document objects.
-    """
+    """Split documents into chunks for embedding."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=50,
@@ -84,51 +73,32 @@ def chunk_documents(documents: List[dict]):
     return chunks
 
 
-# ---------------------------------------------------------
-# Build FAISS vector store
-# ---------------------------------------------------------
 def build_vectorstore(chunks, persist_path: str | None = None):
-    """
-    Build FAISS vector store from text chunks and save to configured path.
-    Uses OPENAI_API_KEY from environment.
-    """
+    """Embed chunks and save FAISS index to disk."""
+    _check_openai_key()
     path = persist_path or settings.FAISS_PATH
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    vectorstore = FAISS.from_documents(chunks, embeddings)
+    vectorstore = FAISS.from_documents(chunks, get_embeddings())
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     vectorstore.save_local(path)
     logger.info("FAISS vector store saved to: %s", path)
     return vectorstore
 
 
-# ---------------------------------------------------------
-# Load FAISS vector store
-# ---------------------------------------------------------
 def load_vectorstore(persist_path: str | None = None):
-    """
-    Load existing FAISS vector store from configured or given path.
-    """
+    """Load an existing FAISS index from disk."""
     path = persist_path or settings.FAISS_PATH
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     vectorstore = FAISS.load_local(
         path,
-        embeddings,
+        get_embeddings(),
         allow_dangerous_deserialization=True,
     )
     logger.info("FAISS vector store loaded from: %s", path)
     return vectorstore
 
 
-# ---------------------------------------------------------
-# Full pipeline (optional)
-# ---------------------------------------------------------
-def build_embeddings_pipeline(csv_loaded: bool = True):
-    """
-    Full pipeline:
-    - load documents from DB
-    - chunk them
-    - build and save FAISS index
-    """
+def build_embeddings_pipeline():
+    """Full pipeline: load documents → chunk → embed → save FAISS index."""
+    _check_openai_key()
     documents = load_documents()
     chunks = chunk_documents(documents)
     build_vectorstore(chunks)

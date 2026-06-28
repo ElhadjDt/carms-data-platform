@@ -1,29 +1,25 @@
 """
 RAG QA chain: load FAISS index, retriever + LLM to answer questions from program descriptions.
-Uses configurable FAISS_PATH from src.config for Docker and AWS deployments.
+LLM and embedding providers are selected via LLM_PROVIDER / EMBEDDING_PROVIDER env vars.
 """
 import logging
 
-from dotenv import load_dotenv
-
-logger = logging.getLogger(__name__)
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
 
 from src.config import settings
+from src.qa.providers import get_embeddings, get_llm
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 def load_vectorstore():
-    """Load FAISS vector store from configured path."""
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    """Load FAISS vector store from configured path using the active embedding provider."""
     return FAISS.load_local(
         settings.FAISS_PATH,
-        embeddings,
+        get_embeddings(),
         allow_dangerous_deserialization=True,
     )
 
@@ -31,11 +27,6 @@ def load_vectorstore():
 def build_qa_chain():
     vectorstore = load_vectorstore()
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
-
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0,
-    )
 
     prompt = ChatPromptTemplate.from_template(
         """You are a helpful assistant answering questions about residency programs.
@@ -52,12 +43,9 @@ Question:
     )
 
     rag_chain = (
-        {
-            "context": retriever,
-            "question": RunnablePassthrough(),
-        }
+        {"context": retriever, "question": RunnablePassthrough()}
         | prompt
-        | llm
+        | get_llm()
         | StrOutputParser()
     )
 
@@ -68,7 +56,7 @@ _qa_chain = None
 
 
 def _get_chain():
-    """Lazy-load the QA chain on first call so importing this module doesn't trigger FAISS/OpenAI setup."""
+    """Lazy-load the QA chain on first call so importing this module doesn't trigger provider setup."""
     global _qa_chain
     if _qa_chain is None:
         _qa_chain = build_qa_chain()
