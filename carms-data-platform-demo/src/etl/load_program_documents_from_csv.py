@@ -1,7 +1,11 @@
+import logging
+
 import pandas as pd
 from sqlmodel import Session, select
 from src.db.models import Program, ProgramDocument
 from src.db.session import engine
+
+logger = logging.getLogger(__name__)
 
 
 SECTION_COLUMNS = [
@@ -27,7 +31,7 @@ def load_program_documents(filepath: str):
     (wide → long), maps them to Program via program_description_id,
     and inserts them into ProgramDocument.
     """
-    print(f"Loading program descriptions from: {filepath}")
+    logger.info("Loading program descriptions from: %s", filepath)
     df = pd.read_csv(filepath)
 
     with Session(engine) as session:
@@ -42,7 +46,7 @@ def load_program_documents(filepath: str):
             program = session.exec(stmt).first()
 
             if not program:
-                print(f"Warning: No Program found for program_description_id={row['program_description_id']}")
+                logger.warning("No Program found for program_description_id=%s", row['program_description_id'])
                 skipped += 1
                 continue
 
@@ -67,9 +71,7 @@ def load_program_documents(filepath: str):
 
         session.commit()
 
-    print("ProgramDocument loading complete.")
-    print(f"Inserted documents: {inserted}")
-    print(f"Skipped (no matching Program): {skipped}")
+    logger.info("ProgramDocument loading complete. Inserted: %d, Skipped: %d", inserted, skipped)
 
 if __name__ == "__main__":
     from src.config import settings

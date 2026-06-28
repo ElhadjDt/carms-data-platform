@@ -2,8 +2,11 @@
 Extract CaRMS ZIP archives from raw data directory into extracted directory.
 Uses paths from src.config for Docker and local consistency.
 """
+import logging
 import zipfile
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def extract_zip():
@@ -17,16 +20,16 @@ def extract_zip():
 
     zip_files = list(raw_dir.glob("*.zip"))
     if not zip_files:
-        print(f"No ZIP files found in {raw_dir}.")
+        logger.warning("No ZIP files found in %s.", raw_dir)
         return
 
     for zip_path in zip_files:
-        print(f"Processing ZIP: {zip_path.name}")
+        logger.info("Processing ZIP: %s", zip_path.name)
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extracted_dir)
-        print(f"Extracted into: {extracted_dir}")
+        logger.info("Extracted into: %s", extracted_dir)
 
-    print("All ZIP files extracted.")
+    logger.info("All ZIP files extracted.")
 
 
 if __name__ == "__main__":

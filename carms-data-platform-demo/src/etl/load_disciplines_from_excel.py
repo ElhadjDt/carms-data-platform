@@ -1,7 +1,11 @@
+import logging
+
 import pandas as pd
 from sqlmodel import Session
 from src.db.session import engine
 from src.db.models import Discipline
+
+logger = logging.getLogger(__name__)
 
 
 def load_disciplines(filepath: str):
@@ -24,7 +28,7 @@ def load_disciplines(filepath: str):
             # Check if discipline already exists
             existing = session.get(Discipline, discipline_id)
             if existing:
-                print(f"Discipline already exists, skipping: {name} (id={discipline_id})")
+                logger.debug("Discipline already exists, skipping: %s (id=%d)", name, discipline_id)
                 continue
 
             # Create new Discipline object
@@ -37,7 +41,7 @@ def load_disciplines(filepath: str):
 
         session.commit()
 
-    print("Disciplines successfully loaded into the database from 1503_discipline.xlsx.")
+    logger.info("Disciplines successfully loaded into the database from 1503_discipline.xlsx.")
 
 
 if __name__ == "__main__":

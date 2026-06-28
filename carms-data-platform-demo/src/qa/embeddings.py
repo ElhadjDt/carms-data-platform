@@ -2,11 +2,14 @@
 Build FAISS vector store from ProgramDocument table for RAG retrieval.
 Uses configurable paths from src.config (FAISS_PATH, DATA_DIR) for Docker compatibility.
 """
+import logging
 from pathlib import Path
 from typing import List
 import os
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 from sqlmodel import Session, select
 from src.config import settings
 from src.db.session import engine
@@ -45,7 +48,7 @@ def load_documents() -> List[dict]:
             }
         )
 
-    print(f"Loaded {len(documents)} documents from ProgramDocument.")
+    logger.info("Loaded %d documents from ProgramDocument.", len(documents))
     return documents
 
 
@@ -77,7 +80,7 @@ def chunk_documents(documents: List[dict]):
         )
         chunks.extend(sub_docs)
 
-    print(f"Created {len(chunks)} text chunks.")
+    logger.info("Created %d text chunks.", len(chunks))
     return chunks
 
 
@@ -94,7 +97,7 @@ def build_vectorstore(chunks, persist_path: str | None = None):
     vectorstore = FAISS.from_documents(chunks, embeddings)
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     vectorstore.save_local(path)
-    print(f"FAISS vector store saved to: {path}")
+    logger.info("FAISS vector store saved to: %s", path)
     return vectorstore
 
 
@@ -112,7 +115,7 @@ def load_vectorstore(persist_path: str | None = None):
         embeddings,
         allow_dangerous_deserialization=True,
     )
-    print(f"FAISS vector store loaded from: {path}")
+    logger.info("FAISS vector store loaded from: %s", path)
     return vectorstore
 
 
