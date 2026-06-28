@@ -129,27 +129,70 @@ docker compose down -v
 
 ## Database Design
 
-Raw CaRMS data is denormalized across two Excel files. This platform decomposes it into a **3NF relational schema** to eliminate update, insertion, and deletion anomalies.
+### Problem
 
-### Schema
+The raw CaRMS data ships as two Excel files: `1503_discipline.xlsx` and `1503_program_master.xlsx`. The program master file mixes discipline, school, stream, site, and program attributes into a single flat table — storing everything together violates normalization rules and creates update, insertion, and deletion anomalies.
 
-**discipline** — `discipline_id (PK)`, `discipline_name`
+### Normalized Schema (3NF)
 
-**school** — `school_id (PK)`, `school_name`
+The program master file is decomposed into four relational tables, plus a fifth table for program descriptions loaded from CSV:
 
-**stream** — `program_stream_id (PK)`, `program_stream`, `program_stream_name`
+**Table: discipline**
 
-**site** — `site_id (PK, auto)`, `site_name`
+| Column | Type |
+|--------|------|
+| discipline_id | PK |
+| discipline_name | Text |
 
-**program** — `program_id (PK, auto)`, `discipline_id (FK)`, `school_id (FK)`, `program_stream_id (FK)`, `site_id (FK)`, `program_name`, `program_url`
+**Table: school**
 
-**program_document** — `id (PK, auto)`, `program_id (FK)`, `section_name`, `content`, `source`
+| Column | Type |
+|--------|------|
+| school_id | PK |
+| school_name | Text |
+
+**Table: stream**
+
+| Column | Type |
+|--------|------|
+| program_stream_id | PK |
+| program_stream | Text |
+| program_stream_name | Text |
+
+**Table: site**
+
+| Column | Type |
+|--------|------|
+| site_id | PK (auto-increment) |
+| site_name | Text |
+
+**Table: program**
+
+| Column | Type |
+|--------|------|
+| program_id | PK (auto-increment) |
+| discipline_id | FK → discipline |
+| school_id | FK → school |
+| program_stream_id | FK → stream |
+| site_id | FK → site |
+| program_name | Text |
+| program_url | Text |
+
+**Table: program_document**
+
+| Column | Type |
+|--------|------|
+| id | PK (auto-increment) |
+| program_id | FK → program |
+| section_name | Text |
+| content | Text |
+| source | Text |
 
 ![Entity-relationship diagram](docs/imgs/db_relations.png)
 
 ### Population
 
-The ETL pipeline loads `1503_discipline.xlsx` and `1503_program_master.xlsx` row-by-row using SQLModel, resolving dimension records (school, stream, site) with get-or-create logic before inserting each program.
+The ETL pipeline loads both Excel files row-by-row using SQLModel, resolving dimension records (school, stream, site) with get-or-create logic before inserting each program. Program descriptions are loaded from `1503_program_descriptions_x_section.csv` and normalized wide-to-long into `program_document`.
 
 ---
 
