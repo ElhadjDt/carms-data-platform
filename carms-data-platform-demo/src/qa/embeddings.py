@@ -3,7 +3,6 @@ Build FAISS vector store from ProgramDocument table for RAG retrieval.
 Embedding provider is selected via EMBEDDING_PROVIDER env var ('openai' | 'ollama').
 """
 import logging
-import os
 from pathlib import Path
 from typing import List
 
@@ -20,13 +19,6 @@ from src.qa.providers import get_embeddings
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-
-def _check_openai_key():
-    """Raise early if OpenAI is the embedding provider but no key is set."""
-    if os.getenv("EMBEDDING_PROVIDER", "openai").lower() == "openai":
-        if not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OPENAI_API_KEY is not set. Set it or switch EMBEDDING_PROVIDER=ollama.")
 
 
 def load_documents() -> List[dict]:
@@ -75,7 +67,6 @@ def chunk_documents(documents: List[dict]):
 
 def build_vectorstore(chunks, persist_path: str | None = None):
     """Embed chunks and save FAISS index to disk."""
-    _check_openai_key()
     path = persist_path or settings.FAISS_PATH
     vectorstore = FAISS.from_documents(chunks, get_embeddings())
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -98,7 +89,6 @@ def load_vectorstore(persist_path: str | None = None):
 
 def build_embeddings_pipeline():
     """Full pipeline: load documents → chunk → embed → save FAISS index."""
-    _check_openai_key()
     documents = load_documents()
     chunks = chunk_documents(documents)
     build_vectorstore(chunks)

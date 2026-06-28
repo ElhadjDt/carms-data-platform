@@ -275,8 +275,8 @@ Interactive documentation available at **http://localhost:8000/docs** once the A
 | `LLM_PROVIDER` | No | `openai` | LLM backend: `openai` or `ollama` |
 | `EMBEDDING_PROVIDER` | No | `openai` | Embedding backend: `openai` or `ollama` |
 | `OLLAMA_HOST` | No | `http://ollama:11434` | Ollama server URL |
-| `OLLAMA_LLM_MODEL` | No | `llama3.2` | Ollama model for generation |
-| `OLLAMA_EMBEDDING_MODEL` | No | `nomic-embed-text` | Ollama model for embeddings |
+| `OLLAMA_LLM_MODEL` | No | `llama3.2:1b` | Ollama model for generation |
+| `OLLAMA_EMBEDDING_MODEL` | No | `nomic-embed-text:v1.5` | Ollama model for embeddings |
 | `DATA_DIR` | No | `/data` (inside container) | Path to the data directory |
 | `FAISS_PATH` | No | `{DATA_DIR}/embeddings/faiss_index` | Path to the FAISS index |
 | `CORS_ORIGINS` | No | `http://localhost:8501` | Comma-separated allowed origins for the API |

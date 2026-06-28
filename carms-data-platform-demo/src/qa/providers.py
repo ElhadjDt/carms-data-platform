@@ -6,6 +6,8 @@ Supported values: 'openai' (default) | 'ollama'
 Adding a new provider: implement the two if-blocks below and add its package to requirements.
 All model names and URLs are configured in src.config — no defaults live here.
 """
+import os
+
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseChatModel
 
@@ -26,6 +28,8 @@ def get_llm() -> BaseChatModel:
 def get_embeddings() -> Embeddings:
     provider = settings.EMBEDDING_PROVIDER.lower()
     if provider == "openai":
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set. Set it or switch EMBEDDING_PROVIDER=ollama.")
         from langchain_openai import OpenAIEmbeddings
         return OpenAIEmbeddings(model=settings.OPENAI_EMBEDDING_MODEL)
     if provider == "ollama":

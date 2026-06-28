@@ -4,6 +4,7 @@ Registers routers for disciplines, programs, schools, sites, streams, and QA (RA
 """
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,12 +24,21 @@ from src.api.routers import (
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from src.qa.qa_chain import build_qa_chain
+    import src.qa.qa_chain as _qa_module
+    _qa_module._qa_chain = build_qa_chain()
+    yield
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title="CARMS Residency API",
         version="1.0.0",
         description="Backend API for residency programs and QA system.",
+        lifespan=lifespan,
     )
 
     allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:8501").split(",")
