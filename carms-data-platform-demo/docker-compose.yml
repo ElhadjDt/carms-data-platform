@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile.api
     container_name: carms_init_db
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -47,7 +47,7 @@ services:
     build: .
     container_name: carms_etl
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -75,7 +75,7 @@ services:
       dockerfile: Dockerfile.api
     container_name: carms_embeddings
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -96,7 +96,7 @@ services:
     container_name: carms_api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -151,7 +151,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     depends_on:
