@@ -35,5 +35,3 @@ data/extracted/*
 
 # Ignore Python files inside data/raw
 data/raw/*.py
-
-carms-data-platform-demo/tests/
