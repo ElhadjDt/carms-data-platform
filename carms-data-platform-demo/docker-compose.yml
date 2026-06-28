@@ -5,16 +5,18 @@ services:
     image: postgres:16
     container_name: carms_postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: carms
-      POSTGRES_PASSWORD: carms
-      POSTGRES_DB: carms_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U carms -d carms_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,10 +24,12 @@ services:
       - carms_net
 
   init-db:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: carms_init_db
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -43,7 +47,7 @@ services:
     build: .
     container_name: carms_etl
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -66,10 +70,12 @@ services:
       - carms_net
 
   embeddings:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: carms_embeddings
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -84,11 +90,13 @@ services:
       - carms_net
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: carms_api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -105,7 +113,9 @@ services:
       - carms_net
 
   dashboard:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: carms_dashboard
     restart: unless-stopped
     environment:
@@ -141,7 +151,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+psycopg2://carms:carms@db:5432/carms_db
+      DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     depends_on:

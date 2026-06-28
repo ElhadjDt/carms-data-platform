@@ -1,7 +1,11 @@
+import logging
+
 import pandas as pd
 from sqlmodel import Session, select
 from src.db.session import engine
 from src.db.models import Program, School, Stream, Site, Discipline
+
+logger = logging.getLogger(__name__)
 
 
 def load_programs(filepath: str):
@@ -52,7 +56,7 @@ def load_programs(filepath: str):
             # Validate discipline (must exist)
             # -----------------------------
             if not session.get(Discipline, discipline_id):
-                print(f"Skipping program: discipline {discipline_id} not found.")
+                logger.warning("Skipping program: discipline %d not found.", discipline_id)
                 continue
 
             # -----------------------------
@@ -65,8 +69,7 @@ def load_programs(filepath: str):
                     school_name=school_name
                 )
                 session.add(school)
-                session.commit()
-                session.refresh(school)
+                session.flush()
 
             # -----------------------------
             # STREAM: get or create
@@ -79,8 +82,7 @@ def load_programs(filepath: str):
                     program_stream_name=program_stream_name
                 )
                 session.add(stream)
-                session.commit()
-                session.refresh(stream)
+                session.flush()
 
             # -----------------------------
             # SITE: get or create
@@ -92,8 +94,7 @@ def load_programs(filepath: str):
             if not site:
                 site = Site(site_name=program_site)
                 session.add(site)
-                session.commit()
-                session.refresh(site)
+                session.flush()  # needed to populate site.site_id before Program insert
 
             # -----------------------------
             # PROGRAM: check duplicates
@@ -109,7 +110,7 @@ def load_programs(filepath: str):
             ).first()
 
             if existing_program:
-                print(f"Program already exists, skipping: {program_name}")
+                logger.debug("Program already exists, skipping: %s", program_name)
                 continue
 
             # -----------------------------
@@ -129,7 +130,7 @@ def load_programs(filepath: str):
         # Final commit
         session.commit()
 
-    print("1503_program_master.xlsx successfully loaded into the database.")
+    logger.info("1503_program_master.xlsx successfully loaded into the database.")
 
 
 if __name__ == "__main__":

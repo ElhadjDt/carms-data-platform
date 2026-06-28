@@ -2,7 +2,11 @@
 RAG QA chain: load FAISS index, retriever + LLM to answer questions from program descriptions.
 Uses configurable FAISS_PATH from src.config for Docker and AWS deployments.
 """
+import logging
+
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
@@ -60,16 +64,22 @@ Question:
     return rag_chain
 
 
-QA_CHAIN = build_qa_chain()
+_qa_chain = None
+
+
+def _get_chain():
+    """Lazy-load the QA chain on first call so importing this module doesn't trigger FAISS/OpenAI setup."""
+    global _qa_chain
+    if _qa_chain is None:
+        _qa_chain = build_qa_chain()
+    return _qa_chain
 
 
 def ask(question: str) -> str:
-    return QA_CHAIN.invoke(question)
+    return _get_chain().invoke(question)
 
 
 if __name__ == "__main__":
-    print(
-        ask(
-            "What are the selection criteria for the Family Medicine program at McGill?"
-        )
-    )
+    logging.basicConfig(level=logging.INFO)
+    answer = ask("What are the selection criteria for the Family Medicine program at McGill?")
+    logger.info("Answer: %s", answer)

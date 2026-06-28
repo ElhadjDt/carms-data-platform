@@ -1,0 +1,4 @@
+# Development and testing tools — not installed in production image
+pytest==8.3.5
+httpx==0.28.1
+pytest-cov==6.2.1
