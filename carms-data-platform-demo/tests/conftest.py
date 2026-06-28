@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
+from unittest.mock import MagicMock, patch
 
 from src.api.main import app
 from src.api.deps import get_db
@@ -66,6 +67,7 @@ def client(test_engine, seed_db):
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
-        yield c
+    with patch("src.qa.qa_chain.build_qa_chain", return_value=MagicMock()):
+        with TestClient(app) as c:
+            yield c
     app.dependency_overrides.clear()
