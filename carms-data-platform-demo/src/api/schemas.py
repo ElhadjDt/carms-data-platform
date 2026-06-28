@@ -1,6 +1,6 @@
 # api/schemas.py
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class DisciplineRead(BaseModel):
     discipline_id: int
@@ -55,7 +55,7 @@ class ProgramRead(BaseModel):
 
 
 class QARequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=500)
 
 
 class QAResponse(BaseModel):
