@@ -1,24 +1,33 @@
-fastapi
-uvicorn
-pydantic
-sqlmodel
-sqlalchemy
-psycopg2-binary
-pandas
-openpyxl
-python-dotenv
+# Web framework
+fastapi==0.138.1
+uvicorn==0.49.0
+pydantic==2.13.4
 
-faiss-cpu
-openai
+# Database
+sqlmodel==0.0.39
+SQLAlchemy==2.0.51
+psycopg2-binary==2.9.12
 
-langchain
-langchain-openai
-langchain-community
-langchain-text-splitters
+# Data processing
+pandas==3.0.4
+openpyxl==3.1.5
+python-dotenv==1.2.2
 
-dagster
-dagster-webserver
+# Vector search & embeddings
+faiss-cpu==1.14.3
+openai==2.44.0
 
-streamlit
-requests
-plotly
+# LangChain RAG stack
+langchain==1.3.11
+langchain-openai==1.3.3
+langchain-community==0.4.2
+langchain-text-splitters==1.1.2
+
+# ETL orchestration
+dagster==1.13.11
+dagster-webserver==1.13.11
+
+# Dashboard
+streamlit==1.58.0
+requests==2.34.2
+plotly==6.8.0
