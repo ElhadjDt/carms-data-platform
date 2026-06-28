@@ -2,7 +2,14 @@
 CARMS Residency API — FastAPI application entry point.
 Registers routers for disciplines, programs, schools, sites, streams, and QA (RAG).
 """
+import logging
+
 from fastapi import FastAPI
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
 
 from src.api.routers import (
     disciplines,
