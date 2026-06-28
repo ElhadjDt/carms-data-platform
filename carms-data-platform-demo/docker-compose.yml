@@ -23,6 +23,23 @@ services:
     networks:
       - carms_net
 
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    container_name: carms_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - carms_net
+
   init-db:
     build:
       context: .
@@ -78,6 +95,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
     env_file:
       - .env
     command: ["python", "-m", "src.qa.embeddings"]
@@ -99,6 +121,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
     env_file:
       - .env
     command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -140,7 +167,7 @@ services:
       - api
     networks:
       - carms_net
-    
+
   dagster:
     build: .
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "src.etl.dagster_defs"]
@@ -154,6 +181,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
     depends_on:
       db:
         condition: service_healthy
@@ -165,3 +197,4 @@ networks:
 
 volumes:
   postgres_data:
+  ollama_data:
