@@ -1,0 +1,29 @@
+# Data files are mounted as volumes at runtime
+../data/
+
+# Documentation and images not needed in image
+../docs/
+../README.md
+
+# Git history
+../.git/
+../.gitignore
+../.gitattributes
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Environment files — never bake secrets into an image
+**/.env
+
+# Local virtual environments
+**/venv/
+**/.venv/
+
+# Test artifacts
+**/tests/
+**/.pytest_cache/
+**/*.egg-info/
