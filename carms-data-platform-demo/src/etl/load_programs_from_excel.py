@@ -69,8 +69,7 @@ def load_programs(filepath: str):
                     school_name=school_name
                 )
                 session.add(school)
-                session.commit()
-                session.refresh(school)
+                session.flush()
 
             # -----------------------------
             # STREAM: get or create
@@ -83,8 +82,7 @@ def load_programs(filepath: str):
                     program_stream_name=program_stream_name
                 )
                 session.add(stream)
-                session.commit()
-                session.refresh(stream)
+                session.flush()
 
             # -----------------------------
             # SITE: get or create
@@ -96,8 +94,7 @@ def load_programs(filepath: str):
             if not site:
                 site = Site(site_name=program_site)
                 session.add(site)
-                session.commit()
-                session.refresh(site)
+                session.flush()  # needed to populate site.site_id before Program insert
 
             # -----------------------------
             # PROGRAM: check duplicates
