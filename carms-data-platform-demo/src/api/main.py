@@ -26,9 +26,8 @@ from src.api.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from src.qa.qa_chain import build_qa_chain
-    import src.qa.qa_chain as _qa_module
-    _qa_module._qa_chain = build_qa_chain()
+    from src.qa.qa_chain import initialize
+    initialize()
     yield
 
 

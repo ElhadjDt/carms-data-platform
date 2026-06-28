@@ -55,8 +55,14 @@ Question:
 _qa_chain = None
 
 
+def initialize():
+    """Pre-build the QA chain at app startup so requests never trigger a cold build."""
+    global _qa_chain
+    _qa_chain = build_qa_chain()
+
+
 def _get_chain():
-    """Lazy-load the QA chain on first call so importing this module doesn't trigger provider setup."""
+    """Return the pre-built chain, or build it on first call if initialize() was not called."""
     global _qa_chain
     if _qa_chain is None:
         _qa_chain = build_qa_chain()

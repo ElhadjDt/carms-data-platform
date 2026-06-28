@@ -17,6 +17,8 @@ from src.config import settings
 def get_llm() -> BaseChatModel:
     provider = settings.LLM_PROVIDER.lower()
     if provider == "openai":
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY is not set. Set it or switch LLM_PROVIDER=ollama.")
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(model=settings.OPENAI_LLM_MODEL, temperature=0)
     if provider == "ollama":
