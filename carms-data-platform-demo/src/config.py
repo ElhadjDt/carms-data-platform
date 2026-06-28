@@ -41,8 +41,8 @@ class Settings:
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
     EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "openai")
     OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    OLLAMA_LLM_MODEL: str = os.getenv("OLLAMA_LLM_MODEL", "llama3.2")
-    OLLAMA_EMBEDDING_MODEL: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+    OLLAMA_LLM_MODEL: str = os.getenv("OLLAMA_LLM_MODEL", "llama3.2:1b")
+    OLLAMA_EMBEDDING_MODEL: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:v1.5")
     OPENAI_LLM_MODEL: str = os.getenv("OPENAI_LLM_MODEL", "gpt-4o-mini")
     OPENAI_EMBEDDING_MODEL: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 

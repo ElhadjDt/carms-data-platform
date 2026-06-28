@@ -98,8 +98,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
     env_file:
       - .env
     command: ["python", "-m", "src.qa.embeddings"]
@@ -124,8 +124,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
     env_file:
       - .env
     command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -184,8 +184,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
     depends_on:
       db:
         condition: service_healthy

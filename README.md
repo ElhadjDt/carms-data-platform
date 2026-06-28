@@ -116,8 +116,8 @@ Run the full platform without an OpenAI key using local models via [Ollama](http
 ```bash
 # 1. Start the Ollama service and pull the required models
 docker compose --profile ollama up -d ollama
-docker exec carms_ollama ollama pull llama3.2
-docker exec carms_ollama ollama pull nomic-embed-text
+docker exec carms_ollama ollama pull llama3.2:1b
+docker exec carms_ollama ollama pull nomic-embed-text:v1.5
 
 # 2. Switch providers in .env
 #    LLM_PROVIDER=ollama
@@ -235,7 +235,7 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 | `EMBEDDING_PROVIDER` | Model | `LLM_PROVIDER` | Model |
 |---|---|---|---|
 | `openai` (default) | `text-embedding-3-small` | `openai` (default) | `gpt-4o-mini` |
-| `ollama` | `nomic-embed-text` | `ollama` | `llama3.2` |
+| `ollama` | `nomic-embed-text:v1.5` | `ollama` | `llama3.2:1b` |
 
 The QA system is exposed as a REST endpoint (`POST /qa`) and through the Streamlit dashboard.
 

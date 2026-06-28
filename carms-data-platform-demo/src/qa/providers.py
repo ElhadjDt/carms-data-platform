@@ -22,7 +22,7 @@ def get_llm() -> BaseChatModel:
     if provider == "ollama":
         from langchain_ollama import ChatOllama
         return ChatOllama(
-            model=os.getenv("OLLAMA_LLM_MODEL", "llama3.2"),
+            model=os.getenv("OLLAMA_LLM_MODEL", "llama3.2:1b"),
             base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
             temperature=0,
         )
@@ -39,7 +39,7 @@ def get_embeddings() -> Embeddings:
     if provider == "ollama":
         from langchain_ollama import OllamaEmbeddings
         return OllamaEmbeddings(
-            model=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"),
+            model=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:v1.5"),
             base_url=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
         )
     raise ValueError(f"Unknown EMBEDDING_PROVIDER: {provider!r}. Choose 'openai' or 'ollama'.")
