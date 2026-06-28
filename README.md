@@ -59,7 +59,7 @@ docker compose up -d api dashboard
 
 - Docker and Docker Compose
 - An OpenAI API key **or** [Ollama](https://ollama.com) running locally (see [Ollama mode](#ollama-offline-mode))
-- 4 GB RAM available to Docker (8 GB recommended — see [memory requirements](#troubleshooting))
+- 4 GB RAM available to Docker for OpenAI mode; 8 GB for Ollama mode (see [memory requirements](#troubleshooting))
 
 ### Step-by-step
 
@@ -112,6 +112,8 @@ docker compose up -d dagster
 ### Ollama (offline) mode
 
 Run the full platform without an OpenAI key using local models via [Ollama](https://ollama.com).
+
+> **RAM:** Running both models simultaneously requires ~5–6 GB available to Docker.
 
 ```bash
 # 1. Start the Ollama service and pull the required models
@@ -308,7 +310,7 @@ Check that `OPENAI_API_KEY` is set in `.env` and has sufficient quota. The embed
 
 **Out of memory during setup**
 
-The full stack requires ~3.1 GB RAM at peak (all services starting simultaneously). If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
+The full stack requires ~3.1 GB RAM at peak in OpenAI mode (all services starting simultaneously). Ollama mode adds ~2–3 GB for the local models (`llama3.2:1b` + `nomic-embed-text:v1.5`), for a total peak of ~5–6 GB. If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
 
 **FAISS index not found when starting API**
 
