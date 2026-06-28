@@ -215,15 +215,21 @@ The QA system is exposed as a REST endpoint (`POST /qa`) and through the Streaml
 
 ## API Reference
 
-The FastAPI backend exposes 13 endpoints across two categories:
+The FastAPI backend exposes 14 endpoints across two categories.
 
-**Relational data** — `GET /disciplines`, `/programs`, `/schools`, `/sites`, `/streams` (with individual record lookup by ID)
-
-**Q&A** — `POST /qa` — accepts a question string, returns an LLM answer grounded in program descriptions
-
-Full interactive documentation is available at **http://localhost:8000/docs** (Swagger UI) once the API is running.
+**Relational data** — `GET /disciplines`, `/programs`, `/schools`, `/sites`, `/streams` (with individual record lookup by ID), and `GET /health`
 
 ![Database endpoints](docs/imgs/db_api.png)
+
+**Q&A** — `POST /qa` — accepts a question string (1–500 characters), returns an LLM answer grounded in program descriptions
+
+![Q&A endpoint](docs/imgs/qa_api.png)
+
+![Q&A QR code](docs/imgs/qa_qr.png)
+
+Full endpoint details with example request and response values: [docs/api-endpoints.md](docs/api-endpoints.md)
+
+Interactive documentation available at **http://localhost:8000/docs** once the API is running.
 
 ---
 
@@ -232,9 +238,13 @@ Full interactive documentation is available at **http://localhost:8000/docs** (S
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OPENAI_API_KEY` | Yes | — | OpenAI API key for embeddings and Q&A |
-| `DATABASE_URL` | No | `postgresql+psycopg2://carms:carms@localhost:5432/carms_db` | PostgreSQL connection string |
-| `DATA_DIR` | No | `../data` (repo root) | Path to the data directory |
+| `POSTGRES_USER` | No | `carms` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | No | `carms` | PostgreSQL password |
+| `POSTGRES_DB` | No | `carms_db` | PostgreSQL database name |
+| `DATABASE_URL` | No | `postgresql+psycopg2://carms:carms@db:5432/carms_db` | Full connection string (must match the three vars above) |
+| `DATA_DIR` | No | `/data` (inside container) | Path to the data directory |
 | `FAISS_PATH` | No | `{DATA_DIR}/embeddings/faiss_index` | Path to the FAISS index |
+| `CORS_ORIGINS` | No | `http://localhost:8501` | Comma-separated allowed origins for the API |
 
 All variables can be set in `.env` (gitignored). Docker Compose injects them into each container.
 
