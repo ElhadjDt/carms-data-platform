@@ -118,10 +118,9 @@ nav.tabs a {
 }
 
 nav.tabs a:hover { background: var(--accent-soft); color: var(--accent-ink); }
-nav.tabs a[aria-current="page"] { background: var(--accent); color: var(--surface); }
 nav.tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---------- Search / filter controls ---------- */
+/* ---------- Search ---------- */
 
 .search-block { margin-bottom: 28px; }
 
@@ -137,7 +136,8 @@ label.field-label {
 
 .search-row { display: flex; gap: 8px; }
 
-.search-input, select.filter-select {
+.search-input {
+  flex: 1;
   font-family: inherit;
   font-size: 1rem;
   color: var(--ink);
@@ -148,9 +148,7 @@ label.field-label {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.search-input { flex: 1; }
-
-.search-input:focus-visible, select.filter-select:focus-visible {
+.search-input:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -190,10 +188,6 @@ label.field-label {
 
 .chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
 .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.filter-row { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-.filter-row .search-input { flex: 2; min-width: 200px; }
-select.filter-select { flex: 1; min-width: 160px; }
 
 /* ---------- Answer ---------- */
 
@@ -279,7 +273,6 @@ select.filter-select { flex: 1; min-width: 160px; }
 
 .source-text { min-width: 0; flex: 1; }
 .source-name { font-size: 0.9375rem; font-weight: 600; color: var(--ink); margin: 0 0 2px; overflow-wrap: break-word; }
-.source-meta { font-size: 0.8125rem; color: var(--ink-muted); margin: 0 0 2px; }
 
 .source-url {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -293,27 +286,6 @@ select.filter-select { flex: 1; min-width: 160px; }
 
 .source-arrow { color: var(--ink-faint); flex-shrink: 0; margin-top: 2px; }
 .source-card:hover .source-arrow { color: var(--accent); }
-
-.result-count { font-size: 0.8125rem; color: var(--ink-faint); margin: -12px 0 16px; }
-
-.load-more {
-  display: block;
-  margin: 20px auto 0;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--accent-ink);
-  background: var(--accent-soft);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.load-more:hover { background: var(--accent); color: var(--surface); }
-.load-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.load-more[hidden] { display: none; }
 
 /* ---------- Footer ---------- */
 
@@ -343,5 +315,4 @@ footer code {
   header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .search-row { flex-direction: column; }
   .ask-btn { padding: 12px; }
-  .filter-row { flex-direction: column; }
 }

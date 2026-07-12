@@ -147,6 +147,7 @@ services:
     restart: unless-stopped
     environment:
       API_URL: http://api:8000
+      QA_UI_URL: ${QA_UI_URL:-http://localhost:8000/ui/}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:

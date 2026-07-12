@@ -37,11 +37,12 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 
 | Service | URL |
 |---------|-----|
-| Ask a question | http://localhost:8000/ui/ |
-| Browse programs | http://localhost:8000/ui/programs.html |
-| API (Swagger UI) | http://localhost:8000/docs |
+| **Ask a question** (landing page) | http://localhost:8000/ui/ |
 | Streamlit dashboard (relational data) | http://localhost:8501 |
+| API (Swagger UI) | http://localhost:8000/docs |
 | Dagster (optional) | http://localhost:3000 |
+
+The QA page and Streamlit dashboard link to each other, so you can start from either.
 
 **Done testing?** `docker compose --profile ollama down -v --rmi all --remove-orphans` (or `make clean`) tears down every container, volume, and image this project created — see [Cleanup](#cleanup).
 
@@ -54,7 +55,7 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 | Database | PostgreSQL 16 |
 | ORM | SQLModel / SQLAlchemy |
 | API | FastAPI |
-| QA + program lookup UI | Static HTML/CSS/JS, served by FastAPI |
+| QA search UI | Static HTML/CSS/JS, served by FastAPI |
 | Dashboard | Streamlit + Plotly |
 | ETL orchestration | Dagster |
 | RAG pipeline | LangChain + FAISS + Ollama (default) or OpenAI |
@@ -249,6 +250,7 @@ Interactive documentation available at **http://localhost:8000/docs** once the A
 | `DATA_DIR` | No | `/data` (inside container) | Path to the data directory |
 | `FAISS_PATH` | No | `{DATA_DIR}/embeddings/faiss_index` | Path to the FAISS index |
 | `CORS_ORIGINS` | No | `http://localhost:8501` | Comma-separated allowed origins for the API |
+| `QA_UI_URL` | No | `http://localhost:8000/ui/` | Browser-reachable QA page URL, used by the Streamlit "Ask a question" link |
 
 All variables can be set in `.env` (gitignored). Docker Compose injects them into each container.
 

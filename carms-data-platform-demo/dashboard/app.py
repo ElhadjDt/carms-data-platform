@@ -15,6 +15,9 @@ import pandas as pd
 import plotly.express as px
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
+# Browser-reachable URL (not the internal API_URL, which only resolves
+# container-to-container) for the QA search page.
+QA_UI_URL = os.getenv("QA_UI_URL", "http://localhost:8000/ui/")
 
 
 # ---------------------------------------------------------
@@ -170,8 +173,13 @@ def show_streams():
 # ---------------------------------------------------------
 def main():
     st.set_page_config(page_title="CARMS Dashboard", layout="wide")
-    st.title("CARMS Residency Programs — Dashboard")
-    st.caption(f"API: {API_URL}")
+
+    title_col, link_col = st.columns([5, 1])
+    with title_col:
+        st.title("CARMS Residency Programs — Dashboard")
+        st.caption(f"API: {API_URL}")
+    with link_col:
+        st.link_button("Ask a question →", QA_UI_URL, use_container_width=True)
 
     tabs = st.tabs(["Overview", "Disciplines", "Schools", "Sites", "Streams"])
 
