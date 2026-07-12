@@ -66,6 +66,7 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 5. [Environment Variables](#environment-variables)
 6. [Cleanup](#cleanup)
 7. [Troubleshooting](#troubleshooting)
+8. [Known Limitations](#known-limitations)
 
 ---
 
@@ -349,3 +350,14 @@ The API needs `data/embeddings/faiss_index/` to exist before it starts. In Ollam
 ## AWS Deployment
 
 A production deployment architecture mapping this platform to managed AWS services (RDS, ECS Fargate, S3, Secrets Manager) is documented in [docs/aws-architecture.md](docs/aws-architecture.md).
+
+---
+
+## Known Limitations
+
+Deliberate scope boundaries for this demo — not overlooked, just out of scope for a local/portfolio deployment:
+
+- **No authentication or authorization.** Every endpoint, including `POST /qa` (which triggers an LLM call), is open to anyone who can reach the API. A real deployment would need API keys or OAuth in front of it.
+- **No rate limiting.** A client can send unlimited requests; `/qa` is the expensive one, since each call re-runs retrieval and LLM generation.
+- **No caching.** Every `/qa` call re-runs the full retrieval + generation pipeline from scratch, even for an identical, previously-asked question — there's no response cache (e.g. Redis) and no memoization of embedding or LLM calls. The FAISS index itself is loaded once at process startup and reused across requests, but that's the only caching that exists; it's not query-level caching.
+- **No TLS.** The stack serves plain HTTP; a production deployment would terminate TLS at a load balancer or reverse proxy in front of it (see [AWS Deployment](#aws-deployment)).
