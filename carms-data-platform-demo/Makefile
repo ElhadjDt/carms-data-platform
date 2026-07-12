@@ -34,11 +34,10 @@ install:
 	pip install --upgrade pip
 	pip install -r requirements.txt
 
-# Start PostgreSQL + pgAdmin
+# Start PostgreSQL
 db:
-	docker compose up -d db pgadmin
+	docker compose up -d db
 	echo "DB running at localhost:5432"
-	echo "pgAdmin running at http://localhost:5050"
 
 # Initialize database schema
 init-db:
