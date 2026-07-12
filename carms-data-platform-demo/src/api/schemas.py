@@ -58,5 +58,11 @@ class QARequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
 
 
+class SourceRef(BaseModel):
+    program_name: str
+    program_url: str
+
+
 class QAResponse(BaseModel):
     answer: str
+    sources: list[SourceRef] = []

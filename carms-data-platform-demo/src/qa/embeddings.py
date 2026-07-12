@@ -13,7 +13,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlmodel import Session, select
 
 from src.config import settings
-from src.db.models import ProgramDocument
+from src.db.models import Program, ProgramDocument
 from src.db.session import engine
 from src.qa.providers import get_embeddings
 
@@ -23,28 +23,41 @@ logger = logging.getLogger(__name__)
 
 
 def load_documents() -> List[dict]:
-    """Load all ProgramDocument rows from the database."""
+    """Load all ProgramDocument rows from the database, joined with their
+    parent Program for name/URL so citations don't need a DB lookup at query time."""
     with Session(engine) as session:
-        rows = session.exec(select(ProgramDocument)).all()
+        rows = session.exec(
+            select(ProgramDocument, Program).join(
+                Program, ProgramDocument.program_id == Program.program_id
+            )
+        ).all()
 
     documents = [
         {
-            "id": row.id,
-            "program_id": row.program_id,
-            "section_name": row.section_name,
-            "content": row.content,
+            "id": doc.id,
+            "program_id": doc.program_id,
+            "section_name": doc.section_name,
+            "content": doc.content,
+            "program_name": program.program_name,
+            "program_url": program.program_url,
         }
-        for row in rows
+        for doc, program in rows
     ]
     logger.info("Loaded %d documents from ProgramDocument.", len(documents))
     return documents
 
 
 def chunk_documents(documents: List[dict]):
-    """Split documents into chunks for embedding."""
+    """Split documents into chunks for embedding.
+
+    chunk_size/overlap are sized for this dataset's section-level content
+    (avg. ~2.6k chars/section): most sections split into 1-2 chunks rather
+    than the many small fragments a 500-char chunk_size would produce,
+    which keeps local (CPU-only) embedding time reasonable.
+    """
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=2000,
+        chunk_overlap=200,
         separators=["\n\n", "\n", ".", " ", ""],
     )
 
@@ -57,6 +70,8 @@ def chunk_documents(documents: List[dict]):
                     "program_id": doc["program_id"],
                     "section_name": doc["section_name"],
                     "source_id": doc["id"],
+                    "program_name": doc["program_name"],
+                    "program_url": doc["program_url"],
                 }
             ],
         )
