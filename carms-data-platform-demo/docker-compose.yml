@@ -95,8 +95,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
@@ -121,8 +121,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
@@ -181,8 +181,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
       OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
