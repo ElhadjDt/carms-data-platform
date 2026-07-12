@@ -3,6 +3,7 @@ RAG QA chain: load FAISS index, retriever + LLM to answer questions from program
 LLM and embedding providers are selected via LLM_PROVIDER / EMBEDDING_PROVIDER env vars.
 """
 import logging
+import re
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
@@ -13,6 +14,21 @@ from src.config import settings
 from src.qa.providers import get_embeddings, get_llm
 
 logger = logging.getLogger(__name__)
+
+# Small instruction-tuned models (e.g. llama3.2:1b) don't reliably follow a
+# "don't say according to the context" system instruction on longer/denser
+# context, so strip this filler deterministically wherever it slips through.
+_PREAMBLE_RE = re.compile(
+    r"\b(according to|based on)\s+the\s+(provided\s+)?(context|information)\b[,:]?\s*",
+    re.IGNORECASE,
+)
+
+
+def _strip_meta_commentary(answer: str) -> str:
+    cleaned = _PREAMBLE_RE.sub("", answer).strip()
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned
 
 
 def load_vectorstore():
@@ -25,18 +41,22 @@ def load_vectorstore():
 
 
 def build_qa_chain(retriever):
-    prompt = ChatPromptTemplate.from_template(
-        """You are a helpful assistant answering questions about residency programs.
-
-Use ONLY the following context to answer the question.
-If the answer is not in the context, say you don't know.
-
-Context:
-{context}
-
-Question:
-{question}
-"""
+    # Split into system/human messages rather than one templated block: smaller
+    # instruction-tuned models (e.g. llama3.2:1b) follow style rules like "don't
+    # say 'according to the context'" much more reliably in the system message
+    # than when it's mixed into the same block as the context/question.
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You answer questions about residency programs using only the given "
+                "context. Answer directly and naturally, as if you simply know these "
+                "facts. Never mention the words 'context', 'information', or "
+                "'provided' in your answer. If the answer isn't in the context, say "
+                "you don't know.",
+            ),
+            ("human", "Context:\n{context}\n\nQuestion:\n{question}"),
+        ]
     )
 
     rag_chain = (
@@ -78,7 +98,7 @@ def _get_chain():
 def ask(question: str) -> dict:
     """Answer the question and return distinct program sources cited in the
     retrieved context, so callers can link back to the real CaRMS program pages."""
-    answer = _get_chain().invoke(question)
+    answer = _strip_meta_commentary(_get_chain().invoke(question))
 
     sources = []
     seen_urls = set()
