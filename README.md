@@ -242,7 +242,7 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 1. Program descriptions from `program_document` are chunked (2000 chars, 200-char overlap)
 2. Each chunk is embedded (with `program_name`/`program_url` attached as metadata) and stored in a FAISS index
 3. At query time, the top-5 most relevant chunks are retrieved
-4. An LLM generates an answer grounded in the retrieved context, and the API returns the distinct program pages cited alongside it
+4. An LLM generates an answer grounded in the retrieved context, and the API returns `sources` linked directly to that answer — the real CaRMS program page URLs the answer was actually drawn from, not just prose
 
 **Providers** (set via env vars — no code changes needed):
 
