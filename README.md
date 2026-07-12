@@ -2,6 +2,8 @@
 
 A containerized data platform built on public CaRMS residency program data. Demonstrates end-to-end data engineering: automated ETL pipelines, a normalized PostgreSQL database, a REST API, a RAG Q&A system, and an analytics dashboard — all orchestrated with Docker Compose.
 
+Built as hands-on practice: turning theoretical data and AI engineering knowledge into clean, applied experience — real ETL over messy source data, schema normalization, API design, containerized orchestration, and retrieval-augmented generation with local and cloud LLMs.
+
 ---
 
 ## Quick Start
