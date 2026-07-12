@@ -12,7 +12,7 @@ help:
 	@echo ""
 	@echo "  make venv        Create Python virtual environment"
 	@echo "  make install     Install dependencies into venv"
-	@echo "  make db          Start PostgreSQL + pgAdmin (Docker)"
+	@echo "  make db          Start PostgreSQL (Docker)"
 	@echo "  make init-db     Create database schema"
 	@echo "  make etl         Run ETL pipeline"
 	@echo "  make embeddings  Build FAISS index"
@@ -21,7 +21,7 @@ help:
 	@echo "  make dashboard   Run Streamlit visualization dashboard"
 	@echo "  make setup       DB + init-db + etl + embeddings"
 	@echo "  make build       venv + install + setup (full project build)"
-	@echo "  make clean       Remove venv + Docker volumes" + remove ..data/extracted & ..data/embeddings
+	@echo "  make clean       Remove venv, containers, volumes, images, and generated data"
 	@echo ""
 
 # Create virtual environment
@@ -34,11 +34,10 @@ install:
 	pip install --upgrade pip
 	pip install -r requirements.txt
 
-# Start PostgreSQL + pgAdmin
+# Start PostgreSQL
 db:
-	docker compose up -d db pgadmin
+	docker compose up -d db
 	echo "DB running at localhost:5432"
-	echo "pgAdmin running at http://localhost:5050"
 
 # Initialize database schema
 init-db:
@@ -86,9 +85,11 @@ setup: db
 build: venv install setup
 	echo "Full build complete. Run 'make api' to start the backend."
 
-# Clean everything
+# Clean everything: containers, volumes, images (incl. Ollama), venv, generated data
 clean:
-	docker compose down -v --remove-orphans
+	docker compose --profile ollama down -v --rmi all --remove-orphans
 	rm -rf .venv
-	rm -rf ../data/extracted ../data/embeddings
+	# extracted/embeddings are written by containers running as root, so a plain
+	# host-side rm can't remove them — delete via a throwaway container instead.
+	docker run --rm -v "$$(pwd)/../data:/data" alpine rm -rf /data/extracted /data/embeddings
 	echo "Clean complete."

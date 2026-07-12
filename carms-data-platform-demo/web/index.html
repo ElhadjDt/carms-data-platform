@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CaRMS Lookup — Ask a question</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <a class="wordmark" href="index.html">CaRMS <span>Lookup</span></a>
+    <nav class="tabs">
+      <!-- Fixed local dev ports, matching this project's docker-compose mapping. -->
+      <a href="http://localhost:8501" target="_blank" rel="noopener">Browse programs</a>
+      <a href="/docs" target="_blank" rel="noopener">API docs</a>
+    </nav>
+  </header>
+
+  <form class="search-block" id="qa-form">
+    <label class="field-label" for="q">Ask about a residency program</label>
+    <div class="search-row">
+      <input class="search-input" id="q" type="text" maxlength="500" required
+        placeholder="What documents are required to submit an application?" autocomplete="off" />
+      <button class="ask-btn" id="ask" type="submit">Ask</button>
+    </div>
+    <div class="chip-row">
+      <button class="chip" type="button" data-q="What documents are required to submit an application?">Documents required for application</button>
+      <button class="chip" type="button" data-q="What is family medicine residency about?">What is family medicine residency about?</button>
+      <button class="chip" type="button" data-q="What are the selection criteria for Family Medicine?">Selection criteria — Family Medicine</button>
+    </div>
+  </form>
+
+  <div id="result" hidden>
+    <div class="answer-card">
+      <p class="answer-eyebrow"><span class="dot" id="status-dot"></span><span id="status-text">Answer</span></p>
+      <div class="answer-body" id="answer-body"></div>
+    </div>
+
+    <div id="sources-block" hidden>
+      <p class="sources-heading">Sources</p>
+      <ul class="source-list" id="source-list"></ul>
+    </div>
+  </div>
+
+  <footer>
+    <span>Local inference via <code>llama3.2:1b</code> + <code>all-minilm:l6</code> (Ollama), or OpenAI — see README</span>
+  </footer>
+
+</div>
+
+<script>
+  const form = document.getElementById('qa-form');
+  const input = document.getElementById('q');
+  const askBtn = document.getElementById('ask');
+  const result = document.getElementById('result');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const answerBody = document.getElementById('answer-body');
+  const sourcesBlock = document.getElementById('sources-block');
+  const sourceList = document.getElementById('source-list');
+
+  document.querySelectorAll('.chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      input.value = chip.dataset.q;
+      input.focus();
+    });
+  });
+
+  // Renders the answer's plain-text "- item" / "1. item" lines as a list,
+  // other paragraphs as <p> — the API returns plain text, not markup. Local
+  // models vary between bullet and numbered list style between runs, so
+  // both are handled.
+  const BULLET_RE = /^[-*]\s+/;
+  const NUMBERED_RE = /^\d+[.)]\s+/;
+
+  function renderAnswer(text) {
+    answerBody.innerHTML = '';
+    answerBody.classList.remove('muted');
+    const blocks = text.split(/\n\s*\n/);
+    blocks.forEach(function (block) {
+      const lines = block.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+      if (lines.length === 0) return;
+      if (lines.every(function (l) { return BULLET_RE.test(l); })) {
+        const ul = document.createElement('ul');
+        lines.forEach(function (l) {
+          const li = document.createElement('li');
+          li.textContent = l.replace(BULLET_RE, '');
+          ul.appendChild(li);
+        });
+        answerBody.appendChild(ul);
+      } else if (lines.every(function (l) { return NUMBERED_RE.test(l); })) {
+        const ol = document.createElement('ol');
+        lines.forEach(function (l) {
+          const li = document.createElement('li');
+          li.textContent = l.replace(NUMBERED_RE, '');
+          ol.appendChild(li);
+        });
+        answerBody.appendChild(ol);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = lines.join(' ');
+        answerBody.appendChild(p);
+      }
+    });
+  }
+
+  function createArrowIcon() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'source-arrow');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M7 17L17 7M17 7H8M17 7v9');
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function renderSources(sources) {
+    sourceList.innerHTML = '';
+    if (!sources || sources.length === 0) {
+      sourcesBlock.hidden = true;
+      return;
+    }
+    sourcesBlock.hidden = false;
+    sources.forEach(function (s, i) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.className = 'source-card';
+      a.href = s.program_url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+
+      const index = document.createElement('span');
+      index.className = 'source-index';
+      index.textContent = String(i + 1);
+
+      const textWrap = document.createElement('span');
+      textWrap.className = 'source-text';
+      const name = document.createElement('span');
+      name.className = 'source-name';
+      name.textContent = s.program_name;
+      const url = document.createElement('span');
+      url.className = 'source-url';
+      url.textContent = s.program_url;
+      textWrap.appendChild(name);
+      textWrap.appendChild(url);
+
+      a.appendChild(index);
+      a.appendChild(textWrap);
+      a.appendChild(createArrowIcon());
+      li.appendChild(a);
+      sourceList.appendChild(li);
+    });
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
+
+    askBtn.disabled = true;
+    result.hidden = false;
+    statusDot.classList.add('pending');
+    statusText.textContent = 'Thinking…';
+    answerBody.classList.add('muted');
+    answerBody.textContent = 'Retrieving and generating an answer — this can take a moment on local models.';
+    sourcesBlock.hidden = true;
+
+    try {
+      const res = await fetch('/qa/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: question }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(function () { return {}; });
+        throw new Error(body.detail ? JSON.stringify(body.detail) : 'Request failed (' + res.status + ')');
+      }
+
+      const data = await res.json();
+      statusDot.classList.remove('pending');
+      statusText.textContent = 'Answer';
+      renderAnswer(data.answer);
+      renderSources(data.sources);
+    } catch (err) {
+      statusDot.classList.remove('pending');
+      statusText.textContent = 'Error';
+      answerBody.classList.add('muted');
+      answerBody.textContent = 'Could not get an answer: ' + err.message;
+      sourcesBlock.hidden = true;
+    } finally {
+      askBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

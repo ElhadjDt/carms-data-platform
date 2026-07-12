@@ -11,8 +11,8 @@ router = APIRouter(
 @router.post("/", response_model=QAResponse)
 def qa_endpoint(payload: QARequest):
     """
-    Run the QA RAG pipeline and return only the answer.
+    Run the QA RAG pipeline and return the answer with cited program sources.
     """
-    answer = ask(payload.question)
+    result = ask(payload.question)
 
-    return QAResponse(answer=answer)
+    return QAResponse(answer=result["answer"], sources=result["sources"])

@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: carms_postgres
     restart: unless-stopped
     env_file:
@@ -24,10 +22,12 @@ services:
       - carms_net
 
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:0.31.2
     profiles: ["ollama"]
     container_name: carms_ollama
     restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: "4"
     ports:
       - "11434:11434"
     volumes:
@@ -95,11 +95,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
     env_file:
       - .env
     command: ["python", "-m", "src.qa.embeddings"]
@@ -121,11 +121,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
     env_file:
       - .env
     command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -147,6 +147,7 @@ services:
     restart: unless-stopped
     environment:
       API_URL: http://api:8000
+      QA_UI_URL: ${QA_UI_URL:-http://localhost:8000/ui/}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
     env_file:
@@ -181,11 +182,11 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       DATA_DIR: /data
       FAISS_PATH: /data/embeddings/faiss_index
-      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-llama3.2:1b}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-all-minilm:l6}
     depends_on:
       db:
         condition: service_healthy

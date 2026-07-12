@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel
 from unittest.mock import MagicMock, patch
 
@@ -18,7 +19,14 @@ TEST_DATABASE_URL = "sqlite://"
 
 @pytest.fixture(scope="session")
 def test_engine():
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    # StaticPool keeps a single connection alive across threads so the
+    # in-memory SQLite database is shared between the seeding code (main
+    # thread) and FastAPI's sync route handlers (run in a worker thread).
+    engine = create_engine(
+        TEST_DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     SQLModel.metadata.create_all(engine)
     return engine
 
@@ -67,7 +75,8 @@ def client(test_engine, seed_db):
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    with patch("src.qa.qa_chain.build_qa_chain", return_value=MagicMock()):
+    with patch("src.qa.qa_chain.load_vectorstore", return_value=MagicMock()), \
+         patch("src.qa.qa_chain.build_qa_chain", return_value=MagicMock()):
         with TestClient(app) as c:
             yield c
     app.dependency_overrides.clear()

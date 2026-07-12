@@ -1,39 +1,47 @@
 # AWS Deployment Architecture
 
-This document describes the **deployment architecture of the CARMS Data Platform** and how the current local containerized setup can be deployed to AWS using managed cloud services.
+This document maps the platform's current local Docker Compose setup onto managed AWS services for a production-style deployment — same logical components, cloud infrastructure instead of local containers.
 
-The project currently runs locally using **Docker Compose**, and the architecture below shows how the same components can be mapped to AWS infrastructure for production-style deployment.
+## Table of Contents
 
----
-
-# 1. Overview
-
-The CARMS Data Platform consists of the following main components:
-
-- **PostgreSQL relational database**
-- **ETL pipelines** for loading CaRMS program data
-- **Embedding generation pipeline** to build a FAISS vector index
-- **FastAPI backend** exposing both relational and RAG endpoints
-- **Streamlit analytics dashboard**
-
-The platform is designed to run locally using containers and can be deployed to AWS with minimal architectural changes.
+1. [Overview](#1-overview)
+2. [Current Local Architecture](#2-current-local-architecture)
+3. [Target AWS Architecture](#3-target-aws-architecture)
+4. [Storage Strategy](#4-storage-strategy)
+5. [Deployment Flow](#5-deployment-flow)
+6. [Environment Variables](#6-environment-variables)
+7. [Security Considerations](#7-security-considerations)
+8. [Cost Optimization](#8-cost-optimization)
 
 ---
 
-# 2. Current Local Architecture (Docker Compose)
+## 1. Overview
 
-The project currently runs as a **local containerized data platform** using Docker Compose.
+The platform consists of:
 
-### Containers
+- **PostgreSQL** — normalized relational database
+- **ETL pipelines** — load CaRMS program data into Postgres
+- **Embedding pipeline** — builds a FAISS vector index (Ollama locally by default, OpenAI in this AWS target — see [§3](#3-target-aws-architecture))
+- **FastAPI backend** — exposes relational and RAG (`/qa`) endpoints
+- **Streamlit dashboard** — analytics UI
+- **Dagster** — optional ETL/embedding orchestration UI
+
+---
+
+## 2. Current Local Architecture
+
+Runs as a set of Docker Compose services:
 
 | Service | Purpose |
 |------|------|
 | `db` | PostgreSQL database |
 | `init-db` | Creates the relational schema |
 | `etl` | Loads CaRMS datasets into PostgreSQL |
+| `ollama` | Local LLM/embedding server — default provider, profile-gated |
 | `embeddings` | Generates the FAISS vector index |
 | `api` | FastAPI backend exposing database + RAG endpoints |
 | `dashboard` | Streamlit analytics dashboard |
+| `dagster` | Optional ETL/embedding orchestration UI |
 
 ### Shared Data Directory
 
@@ -52,9 +60,9 @@ data/
 | `extracted` | ETL-generated structured files |
 | `embeddings` | FAISS vector index |
 
----
+### Local Architecture Diagram
 
-## Local Architecture Diagram
+`ollama` and `dagster` are omitted below for clarity (see the containers table above) — the diagram shows the core data pipeline: schema → data → index → API → dashboard.
 
 ```
                     ┌─────────────────────────────┐
@@ -91,9 +99,11 @@ data/
 
 ---
 
-# 3. Target AWS Deployment Architecture
+## 3. Target AWS Architecture
 
-The target AWS architecture keeps the same logical components while replacing local infrastructure with managed AWS services.
+Same logical components, on managed AWS services. **This target assumes OpenAI for LLM/embeddings** — Ollama is a convenience for local/offline development, not part of this production design.
+
+> Self-hosting Ollama on AWS (e.g. an EC2 GPU instance) is a valid alternative if avoiding per-token API costs matters more than operational simplicity, but it adds meaningfully more infrastructure to manage than a fully managed API. This document targets the simpler path.
 
 ### AWS Services
 
@@ -101,14 +111,13 @@ The target AWS architecture keeps the same logical components while replacing lo
 |-----------|-------------|--------|
 | Database | Amazon RDS PostgreSQL | Managed relational database |
 | API + RAG | ECS Fargate or AWS App Runner | Run the FastAPI container |
+| LLM + embeddings | OpenAI API | Generation and embeddings |
 | Data storage | Amazon S3 | Store raw data and FAISS artifacts |
 | Secrets | AWS Secrets Manager | Store API keys and database credentials |
 | ETL orchestration | ECS scheduled tasks / Dagster / Step Functions | Run ETL and embedding generation |
 | Dashboard | App Runner / ECS / local | Streamlit analytics interface |
 
----
-
-## AWS Architecture Diagram
+### AWS Architecture Diagram
 
 ```
                     ┌─────────────────────────────────────────────────────┐
@@ -149,7 +158,7 @@ Users / Clients ───▶│   ┌──────────────�
 
 ---
 
-# 4. Storage Strategy
+## 4. Storage Strategy
 
 ### Relational Database
 
@@ -175,7 +184,7 @@ For lightweight deployments, storing the FAISS index in **S3** is usually suffic
 
 ---
 
-# 5. Deployment Flow
+## 5. Deployment Flow
 
 ### Step 1 — Create RDS Database
 
@@ -193,8 +202,6 @@ python -m src.db.init_db
 
 with `DATABASE_URL` pointing to the RDS instance.
 
----
-
 ### Step 2 — Build and Push Docker Image
 
 Build the API container image from the project Dockerfile and push it to **Amazon ECR**.
@@ -207,8 +214,6 @@ docker tag carms-api:latest <aws_account>.dkr.ecr.<region>.amazonaws.com/carms-a
 docker push <aws_account>.dkr.ecr.<region>.amazonaws.com/carms-api
 ```
 
----
-
 ### Step 3 — Run ETL and Embedding Pipelines
 
 Execute ETL and embedding generation using:
@@ -220,53 +225,52 @@ Execute ETL and embedding generation using:
 
 Generated data and vector artifacts are stored in **S3**.
 
----
-
 ### Step 4 — Deploy FastAPI API
 
 Deploy the API container using:
 
-- **AWS App Runner** for simple managed deployments  
-or
-- **ECS Fargate** for more infrastructure control.
+- **AWS App Runner** for simple managed deployments
+- **ECS Fargate** for more infrastructure control
 
 Environment variables are injected from **Secrets Manager**.
-
----
 
 ### Step 5 — Deploy or Connect the Dashboard
 
 The Streamlit dashboard can:
 
 - run locally against the deployed API
-- or be deployed as a container on App Runner or ECS.
+- or be deployed as a container on App Runner or ECS
 
 ---
 
-# 6. Environment Variables
+## 6. Environment Variables
 
-The AWS deployment uses the same configuration model as the local environment.
+The AWS deployment uses the same configuration model as local — this is what's actually needed for the OpenAI-mode target described in [§3](#3-target-aws-architecture). See the main [README](../README.md#environment-variables) for the full variable list, including the Ollama-specific ones used only in local/offline mode.
 
 | Variable | Purpose |
 |------|------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | PostgreSQL connection string (RDS endpoint) |
+| `LLM_PROVIDER` / `EMBEDDING_PROVIDER` | Set to `openai` for this target |
+| `OPENAI_API_KEY` | OpenAI API key (from Secrets Manager) |
 | `DATA_DIR` | Base data directory |
 | `FAISS_PATH` | Path to FAISS vector index |
-| `OPENAI_API_KEY` | OpenAI API key |
 | `API_URL` | Base URL for the Streamlit dashboard |
+| `CORS_ORIGINS` | Allowed origins for the API |
 
 Example:
 
 ```
 DATABASE_URL=postgresql+psycopg2://user:password@rds-endpoint:5432/carms_db
+LLM_PROVIDER=openai
+EMBEDDING_PROVIDER=openai
+OPENAI_API_KEY=...
 DATA_DIR=/data
 FAISS_PATH=/data/embeddings/faiss_index
-OPENAI_API_KEY=...
 ```
 
 ---
 
-# 7. Security Considerations
+## 7. Security Considerations
 
 - Place **RDS in private subnets**
 - Use **security groups** to restrict database access
@@ -276,25 +280,11 @@ OPENAI_API_KEY=...
 
 ---
 
-# 8. Cost Optimization
+## 8. Cost Optimization
 
 For a demonstration deployment:
 
 - use small **RDS instance types**
 - start with **single-AZ** deployment
 - run ETL pipelines as **on-demand tasks**
-- keep dashboard optional if API access is sufficient
-
----
-
-# 9. Summary
-
-The CARMS Data Platform implements a reproducible **local containerized data platform** with:
-
-- normalized relational storage
-- ETL data ingestion pipelines
-- FAISS vector indexing
-- FastAPI API layer
-- Streamlit analytics dashboard
-
-The AWS architecture preserves this design while replacing local infrastructure with **managed cloud services such as RDS, ECS, S3, and Secrets Manager**, enabling scalable deployment with minimal changes to the application code.
+- keep the dashboard optional if API access is sufficient

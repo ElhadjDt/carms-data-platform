@@ -2,29 +2,49 @@
 
 A containerized data platform built on public CaRMS residency program data. Demonstrates end-to-end data engineering: automated ETL pipelines, a normalized PostgreSQL database, a REST API, a RAG Q&A system, and an analytics dashboard — all orchestrated with Docker Compose.
 
+Built as hands-on practice: turning theoretical data and AI engineering knowledge into clean, applied experience — real ETL over messy source data, schema normalization, API design, containerized orchestration, and retrieval-augmented generation with local and cloud LLMs.
+
 ---
 
 ## Quick Start
+
+Defaults to **Ollama** — fully offline, local models, no API key required.
 
 ```bash
 git clone https://github.com/ElhadjDt/carms-data-platform.git
 cd carms-data-platform/carms-data-platform-demo
 
-cp .env.example .env          # add your OPENAI_API_KEY
+cp .env.example .env
 
 docker compose build
 docker compose up -d db
 docker compose run --rm init-db
 docker compose run --rm etl
-docker compose run --rm embeddings
+
+docker compose --profile ollama up -d ollama
+docker exec carms_ollama ollama pull llama3.2:1b
+docker exec carms_ollama ollama pull all-minilm:l6
+
+# Instant: use the prebuilt FAISS index shipped in the repo instead of
+# re-embedding ~9k program descriptions locally (see "Speed" note below).
+mkdir -p ../data/embeddings/faiss_index
+cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/
+
 docker compose up -d api dashboard
 ```
 
+Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of running Ollama.
+
 | Service | URL |
 |---------|-----|
+| **Ask a question** (landing page) | http://localhost:8000/ui/ |
+| Streamlit dashboard (relational data) | http://localhost:8501 |
 | API (Swagger UI) | http://localhost:8000/docs |
-| Streamlit dashboard | http://localhost:8501 |
 | Dagster (optional) | http://localhost:3000 |
+
+The QA page and Streamlit dashboard link to each other, so you can start from either.
+
+**Done testing?** `docker compose --profile ollama down -v --rmi all --remove-orphans` (or `make clean`) tears down every container, volume, and image this project created — see [Cleanup](#cleanup).
 
 ---
 
@@ -35,9 +55,10 @@ docker compose up -d api dashboard
 | Database | PostgreSQL 16 |
 | ORM | SQLModel / SQLAlchemy |
 | API | FastAPI |
+| QA search UI | Static HTML/CSS/JS, served by FastAPI |
 | Dashboard | Streamlit + Plotly |
 | ETL orchestration | Dagster |
-| RAG pipeline | LangChain + FAISS + OpenAI or Ollama |
+| RAG pipeline | LangChain + FAISS + Ollama (default) or OpenAI |
 | Infrastructure | Docker & Docker Compose |
 
 ---
@@ -49,7 +70,9 @@ docker compose up -d api dashboard
 3. [RAG Q&A System](#rag-qa-system)
 4. [API Reference](#api-reference)
 5. [Environment Variables](#environment-variables)
-6. [Troubleshooting](#troubleshooting)
+6. [Cleanup](#cleanup)
+7. [Troubleshooting](#troubleshooting)
+8. [Future Improvements](#future-improvements)
 
 ---
 
@@ -58,81 +81,29 @@ docker compose up -d api dashboard
 ### Prerequisites
 
 - Docker and Docker Compose
-- An OpenAI API key **or** [Ollama](https://ollama.com) running locally (see [Ollama mode](#ollama-offline-mode))
-- 4 GB RAM available to Docker for OpenAI mode; 8 GB for Ollama mode (see [memory requirements](#troubleshooting))
+- [Ollama](https://ollama.com) (default, runs as a Docker service — no API key needed) **or** an OpenAI API key (see [OpenAI mode](#openai-mode))
+- RAM available to Docker: ~5-6 GB for Ollama mode (default), ~3.1 GB for OpenAI mode (see [memory requirements](#troubleshooting))
 
-### Step-by-step
+The commands are in [Quick Start](#quick-start) above — this is what each part of that flow is doing:
 
-**1. Configure environment**
+- **ETL** (`docker compose run --rm etl`) extracts the source ZIP archives and loads disciplines, programs, and program descriptions into Postgres.
+- **FAISS index**: the `cp -r prebuilt_faiss/ollama/...` step is instant because it copies the index already committed to the repo, instead of re-embedding ~9k program descriptions locally. Only run `docker compose run --rm embeddings` yourself if you've changed `data/raw/`.
+- **Dagster** (optional orchestration UI): `docker compose up -d dagster`.
 
-```bash
-cp .env.example .env
-# Edit .env: set OPENAI_API_KEY (or switch to Ollama — see below)
-```
+> **Speed:** `docker compose run --rm embeddings` chunks program descriptions at 2000 chars (200 overlap), which keeps chunk count — and CPU-only embedding time — proportional to the actual dataset instead of over-fragmenting it. The `ollama` service also sets `OLLAMA_NUM_PARALLEL=4` so multiple chunks embed concurrently instead of one at a time; raise it (e.g. to your CPU core count) in `docker-compose.yml` for a further speedup on higher-core machines, or lower it if you're memory-constrained. Expect single-digit minutes on a modern multi-core machine for a full rebuild.
 
-**2. Build the image**
+### OpenAI mode
 
-```bash
-docker compose build
-```
-
-**3. Initialize the database**
+Use OpenAI's hosted models instead of local Ollama — replace the Ollama step in Quick Start with:
 
 ```bash
-docker compose up -d db
-docker compose run --rm init-db
-```
+# .env: set OPENAI_API_KEY, LLM_PROVIDER=openai, EMBEDDING_PROVIDER=openai
 
-**4. Run the ETL pipeline**
-
-Extracts ZIP archives, loads disciplines and programs, and loads program descriptions into the database.
-
-```bash
-docker compose run --rm etl
-```
-
-**5. Generate embeddings**
-
-Chunks program descriptions, embeds them with the configured provider, and builds the FAISS index.
-
-```bash
-docker compose run --rm embeddings
-# Index saved to: data/embeddings/faiss_index
-```
-
-**6. Start the application**
-
-```bash
-docker compose up -d api dashboard
-
-# Optional: Dagster orchestration UI
-docker compose up -d dagster
-```
-
-### Ollama (offline) mode
-
-Run the full platform without an OpenAI key using local models via [Ollama](https://ollama.com).
-
-> **RAM:** Running both models simultaneously requires ~5–6 GB available to Docker.
-
-```bash
-# 1. Start the Ollama service and pull the required models
-docker compose --profile ollama up -d ollama
-docker exec carms_ollama ollama pull llama3.2:1b
-docker exec carms_ollama ollama pull nomic-embed-text:v1.5
-
-# 2. Switch providers in .env
-#    LLM_PROVIDER=ollama
-#    EMBEDDING_PROVIDER=ollama
-
-# 3. Build the FAISS index with Ollama embeddings
-docker compose run --rm embeddings
-
-# 4. Start the application normally
+docker compose run --rm embeddings   # builds the OpenAI-dimension (1536) FAISS index
 docker compose up -d api dashboard
 ```
 
-> **Note:** If you previously built the FAISS index with OpenAI, you must re-run `embeddings` after switching — the vector dimensions are incompatible (1536 vs 768).
+> **Note:** The prebuilt index in `prebuilt_faiss/ollama/` is Ollama-only (`all-minilm:l6`, 384-dim) — OpenAI mode always needs its own `embeddings` run, since the vector dimensions are incompatible (1536 vs 384).
 
 ### Service management
 
@@ -145,10 +116,9 @@ docker compose logs -f api
 
 # Stop all services
 docker compose down
-
-# Stop and remove the PostgreSQL volume
-docker compose down -v
 ```
+
+See [Cleanup](#cleanup) to fully tear down containers, volumes, and images.
 
 ---
 
@@ -227,19 +197,19 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 
 **Pipeline:**
 
-1. Program descriptions from `program_document` are chunked (500 tokens, 50-token overlap)
-2. Each chunk is embedded and stored in a FAISS index
+1. Program descriptions from `program_document` are chunked (2000 chars, 200-char overlap)
+2. Each chunk is embedded (with `program_name`/`program_url` attached as metadata) and stored in a FAISS index
 3. At query time, the top-5 most relevant chunks are retrieved
-4. An LLM generates an answer grounded in the retrieved context
+4. An LLM generates an answer grounded in the retrieved context, and the API returns `sources` linked directly to that answer (see [API Reference](#api-reference))
 
 **Providers** (set via env vars — no code changes needed):
 
-| `EMBEDDING_PROVIDER` | Model | `LLM_PROVIDER` | Model |
-|---|---|---|---|
-| `openai` (default) | `text-embedding-3-small` | `openai` (default) | `gpt-4o-mini` |
-| `ollama` | `nomic-embed-text:v1.5` | `ollama` | `llama3.2:1b` |
+| `EMBEDDING_PROVIDER` | Model | Dim | `LLM_PROVIDER` | Model |
+|---|---|---|---|---|
+| `ollama` (default) | `all-minilm:l6` | 384 | `ollama` (default) | `llama3.2:1b` |
+| `openai` | `text-embedding-3-small` | 1536 | `openai` | `gpt-4o-mini` |
 
-The QA system is exposed as a REST endpoint (`POST /qa`) and through the Streamlit dashboard.
+The QA system is exposed as a REST endpoint (`POST /qa`) and through a minimal search UI at [`/ui/`](#quick-start) — a search box, the answer, and clickable links to the real CaRMS program pages it was drawn from.
 
 ![FAISS index creation](docs/imgs/faiss.png)
 
@@ -253,15 +223,13 @@ The FastAPI backend exposes 14 endpoints across two categories.
 
 ![Database endpoints](docs/imgs/db_api.png)
 
-**Q&A** — `POST /qa` — accepts a question string (1–500 characters), returns an LLM answer grounded in program descriptions
+**Q&A** — `POST /qa` — accepts a question string (1–500 characters), returns an LLM answer grounded in program descriptions plus a `sources` list of the distinct `{program_name, program_url}` pages the answer was drawn from — real links back into the CaRMS dataset, not just prose
 
 ![Q&A endpoint](docs/imgs/qa_api.png)
 
-![Q&A QR code](docs/imgs/qa_qr.png)
-
 Full endpoint details with example request and response values: [docs/api-endpoints.md](docs/api-endpoints.md)
 
-Interactive documentation available at **http://localhost:8000/docs** once the API is running.
+Interactive documentation available at **http://localhost:8000/docs** once the API is running. The static UI at `/ui/` (see [Quick Start](#quick-start)) is a plain client of these same endpoints — no separate backend.
 
 ---
 
@@ -274,16 +242,35 @@ Interactive documentation available at **http://localhost:8000/docs** once the A
 | `POSTGRES_PASSWORD` | No | `carms` | PostgreSQL password |
 | `POSTGRES_DB` | No | `carms_db` | PostgreSQL database name |
 | `DATABASE_URL` | No | `postgresql+psycopg2://carms:carms@db:5432/carms_db` | Full connection string |
-| `LLM_PROVIDER` | No | `openai` | LLM backend: `openai` or `ollama` |
-| `EMBEDDING_PROVIDER` | No | `openai` | Embedding backend: `openai` or `ollama` |
+| `LLM_PROVIDER` | No | `ollama` | LLM backend: `ollama` or `openai` |
+| `EMBEDDING_PROVIDER` | No | `ollama` | Embedding backend: `ollama` or `openai` |
 | `OLLAMA_HOST` | No | `http://ollama:11434` | Ollama server URL |
 | `OLLAMA_LLM_MODEL` | No | `llama3.2:1b` | Ollama model for generation |
-| `OLLAMA_EMBEDDING_MODEL` | No | `nomic-embed-text:v1.5` | Ollama model for embeddings |
+| `OLLAMA_EMBEDDING_MODEL` | No | `all-minilm:l6` | Ollama model for embeddings |
 | `DATA_DIR` | No | `/data` (inside container) | Path to the data directory |
 | `FAISS_PATH` | No | `{DATA_DIR}/embeddings/faiss_index` | Path to the FAISS index |
 | `CORS_ORIGINS` | No | `http://localhost:8501` | Comma-separated allowed origins for the API |
+| `QA_UI_URL` | No | `http://localhost:8000/ui/` | Browser-reachable QA page URL, used by the Streamlit "Ask a question" link |
 
 All variables can be set in `.env` (gitignored). Docker Compose injects them into each container.
+
+---
+
+## Cleanup
+
+Tear down everything this project created — containers, networks, volumes (Postgres data + pulled Ollama models), and every image (locally built and pulled, including `ollama/ollama`):
+
+```bash
+docker compose --profile ollama down -v --rmi all --remove-orphans
+```
+
+Or, equivalently:
+
+```bash
+make clean
+```
+
+To stop services without deleting anything (keep data/models for next time), use `docker compose down` instead — see [Service management](#service-management).
 
 ---
 
@@ -310,14 +297,25 @@ Check that `OPENAI_API_KEY` is set in `.env` and has sufficient quota. The embed
 
 **Out of memory during setup**
 
-The full stack requires ~3.1 GB RAM at peak in OpenAI mode (all services starting simultaneously). Ollama mode adds ~2–3 GB for the local models (`llama3.2:1b` + `nomic-embed-text:v1.5`), for a total peak of ~5–6 GB. If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
+Ollama mode (default) requires ~5–6 GB RAM at peak with both local models loaded (`llama3.2:1b` + `all-minilm:l6`). OpenAI mode is lighter — ~3.1 GB peak, since generation/embedding happen in the cloud instead of locally. If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
 
 **FAISS index not found when starting API**
 
-The embeddings step must complete before the API starts. Run `docker compose run --rm embeddings` and confirm `data/embeddings/faiss_index/` exists before `docker compose up -d api`.
+The API needs `data/embeddings/faiss_index/` to exist before it starts. In Ollama mode, copy the prebuilt index (`cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/`) or run `docker compose run --rm embeddings` to build it yourself; in OpenAI mode you must run `embeddings`. Confirm the directory exists before `docker compose up -d api`.
 
 ---
 
 ## AWS Deployment
 
 A production deployment architecture mapping this platform to managed AWS services (RDS, ECS Fargate, S3, Secrets Manager) is documented in [docs/aws-architecture.md](docs/aws-architecture.md).
+
+---
+
+## Future Improvements
+
+Natural next steps as the project moves further toward a production-ready deployment:
+
+- **Caching.** Every `/qa` call currently re-runs retrieval and generation from scratch, even for a repeated, identical question. Adding a response cache (e.g. Redis) keyed on the question, or memoizing embedding calls, would meaningfully cut latency and cost on repeat queries.
+- **Authentication and authorization.** Every endpoint, including `POST /qa` (which triggers an LLM call), is currently open to anyone who can reach the API. Adding API keys or OAuth is a straightforward next step.
+- **Rate limiting.** `/qa` triggers a full LLM call per request; a rate limiter (e.g. a token-bucket per client) would protect it from being overwhelmed.
+- **TLS.** The stack currently serves plain HTTP; terminating TLS at a load balancer or reverse proxy (see [AWS Deployment](#aws-deployment)) is the next step toward a real deployment.

@@ -133,10 +133,15 @@ def test_list_streams(client):
 # ---------------------------------------------------------------------------
 
 def test_qa_endpoint(client):
-    with patch("src.api.routers.qa.ask", return_value="Family Medicine focuses on primary care."):
+    mock_result = {
+        "answer": "Family Medicine focuses on primary care.",
+        "sources": [{"program_name": "McGill Family Medicine", "program_url": "https://fmed.mcgill.ca"}],
+    }
+    with patch("src.api.routers.qa.ask", return_value=mock_result):
         r = client.post("/qa/", json={"question": "What is family medicine?"})
     assert r.status_code == 200
     assert r.json()["answer"] == "Family Medicine focuses on primary care."
+    assert r.json()["sources"] == mock_result["sources"]
 
 
 def test_qa_empty_question(client):
