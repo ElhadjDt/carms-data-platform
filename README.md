@@ -10,12 +10,36 @@ A containerized data platform built on public CaRMS residency program data. Demo
 git clone https://github.com/ElhadjDt/carms-data-platform.git
 cd carms-data-platform/carms-data-platform-demo
 
-cp .env.example .env          # add your OPENAI_API_KEY
+cp .env.example .env
 
 docker compose build
 docker compose up -d db
 docker compose run --rm init-db
 docker compose run --rm etl
+```
+
+Then pick one provider and finish setup:
+
+**Option A — Ollama (local models, no API key, ~5-6 GB RAM)**
+
+```bash
+docker compose --profile ollama up -d ollama
+docker exec carms_ollama ollama pull llama3.2:1b
+docker exec carms_ollama ollama pull all-minilm:l6
+# .env: LLM_PROVIDER=ollama, EMBEDDING_PROVIDER=ollama
+
+# Instant setup: use the prebuilt FAISS index shipped in the repo instead of
+# re-embedding ~9k program descriptions locally (see "Speed" note below).
+mkdir -p ../data/embeddings/faiss_index
+cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/
+docker compose up -d api dashboard
+```
+
+**Option B — OpenAI (~3.1 GB RAM)**
+
+```bash
+# .env: set OPENAI_API_KEY (LLM_PROVIDER and EMBEDDING_PROVIDER default to openai)
+
 docker compose run --rm embeddings
 docker compose up -d api dashboard
 ```
@@ -59,7 +83,7 @@ docker compose up -d api dashboard
 
 - Docker and Docker Compose
 - An OpenAI API key **or** [Ollama](https://ollama.com) running locally (see [Ollama mode](#ollama-offline-mode))
-- 4 GB RAM available to Docker for OpenAI mode; 8 GB for Ollama mode (see [memory requirements](#troubleshooting))
+- RAM available to Docker: ~3.1 GB for OpenAI mode, ~5-6 GB for Ollama mode (see [memory requirements](#troubleshooting))
 
 ### Step-by-step
 
@@ -67,7 +91,8 @@ docker compose up -d api dashboard
 
 ```bash
 cp .env.example .env
-# Edit .env: set OPENAI_API_KEY (or switch to Ollama — see below)
+# Edit .env: set OPENAI_API_KEY, or switch LLM_PROVIDER/EMBEDDING_PROVIDER to
+# 'ollama' for local models — see Ollama (offline) mode below
 ```
 
 **2. Build the image**
@@ -93,7 +118,7 @@ docker compose run --rm etl
 
 **5. Generate embeddings**
 
-Chunks program descriptions, embeds them with the configured provider, and builds the FAISS index.
+Chunks program descriptions, embeds them with the configured provider, and builds the FAISS index. In Ollama mode you can skip this and copy the prebuilt index instead — see [Ollama (offline) mode](#ollama-offline-mode).
 
 ```bash
 docker compose run --rm embeddings
@@ -111,7 +136,7 @@ docker compose up -d dagster
 
 ### Ollama (offline) mode
 
-Run the full platform without an OpenAI key using local models via [Ollama](https://ollama.com).
+Run the full platform without an OpenAI key using local models via [Ollama](https://ollama.com). The `ollama` Compose service is pinned to `ollama/ollama:0.31.2`.
 
 > **RAM:** Running both models simultaneously requires ~5–6 GB available to Docker.
 
@@ -119,20 +144,24 @@ Run the full platform without an OpenAI key using local models via [Ollama](http
 # 1. Start the Ollama service and pull the required models
 docker compose --profile ollama up -d ollama
 docker exec carms_ollama ollama pull llama3.2:1b
-docker exec carms_ollama ollama pull nomic-embed-text:v1.5
+docker exec carms_ollama ollama pull all-minilm:l6
 
 # 2. Switch providers in .env
 #    LLM_PROVIDER=ollama
 #    EMBEDDING_PROVIDER=ollama
 
-# 3. Build the FAISS index with Ollama embeddings
-docker compose run --rm embeddings
+# 3. Get the FAISS index — instant (prebuilt) or rebuild yourself:
+mkdir -p ../data/embeddings/faiss_index
+cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/
+#   ...or, if you've changed the data: docker compose run --rm embeddings
 
 # 4. Start the application normally
 docker compose up -d api dashboard
 ```
 
-> **Note:** If you previously built the FAISS index with OpenAI, you must re-run `embeddings` after switching — the vector dimensions are incompatible (1536 vs 768).
+> **Note:** If you previously built the FAISS index with OpenAI, you must rebuild after switching — the vector dimensions are incompatible (1536 vs 384). The prebuilt index in `prebuilt_faiss/ollama/` is Ollama-only (`all-minilm:l6`, 384-dim).
+
+> **Speed:** The prebuilt index above covers the full CaRMS dataset shipped in this repo, so Ollama-mode setup only needs seconds to copy it into place — no local embedding required for the common case. If you edit `data/raw/` and need to rebuild: `docker compose run --rm embeddings` chunks program descriptions at 2000 chars (200 overlap), which keeps chunk count — and CPU-only embedding time — proportional to the actual dataset instead of over-fragmenting it. The `ollama` service also sets `OLLAMA_NUM_PARALLEL=4` so multiple chunks embed concurrently instead of one at a time; raise it (e.g. to your CPU core count) in `docker-compose.yml` for a further speedup on higher-core machines, or lower it if you're memory-constrained. Expect single-digit minutes on a modern multi-core machine for a full rebuild.
 
 ### Service management
 
@@ -227,17 +256,17 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 
 **Pipeline:**
 
-1. Program descriptions from `program_document` are chunked (500 tokens, 50-token overlap)
-2. Each chunk is embedded and stored in a FAISS index
+1. Program descriptions from `program_document` are chunked (2000 chars, 200-char overlap)
+2. Each chunk is embedded (with `program_name`/`program_url` attached as metadata) and stored in a FAISS index
 3. At query time, the top-5 most relevant chunks are retrieved
-4. An LLM generates an answer grounded in the retrieved context
+4. An LLM generates an answer grounded in the retrieved context, and the API returns the distinct program pages cited alongside it
 
 **Providers** (set via env vars — no code changes needed):
 
-| `EMBEDDING_PROVIDER` | Model | `LLM_PROVIDER` | Model |
-|---|---|---|---|
-| `openai` (default) | `text-embedding-3-small` | `openai` (default) | `gpt-4o-mini` |
-| `ollama` | `nomic-embed-text:v1.5` | `ollama` | `llama3.2:1b` |
+| `EMBEDDING_PROVIDER` | Model | Dim | `LLM_PROVIDER` | Model |
+|---|---|---|---|---|
+| `openai` (default) | `text-embedding-3-small` | 1536 | `openai` (default) | `gpt-4o-mini` |
+| `ollama` | `all-minilm:l6` | 384 | `ollama` | `llama3.2:1b` |
 
 The QA system is exposed as a REST endpoint (`POST /qa`) and through the Streamlit dashboard.
 
@@ -253,7 +282,7 @@ The FastAPI backend exposes 14 endpoints across two categories.
 
 ![Database endpoints](docs/imgs/db_api.png)
 
-**Q&A** — `POST /qa` — accepts a question string (1–500 characters), returns an LLM answer grounded in program descriptions
+**Q&A** — `POST /qa` — accepts a question string (1–500 characters), returns an LLM answer grounded in program descriptions plus a `sources` list of the distinct `{program_name, program_url}` pages the answer was drawn from — real links back into the CaRMS dataset, not just prose
 
 ![Q&A endpoint](docs/imgs/qa_api.png)
 
@@ -278,7 +307,7 @@ Interactive documentation available at **http://localhost:8000/docs** once the A
 | `EMBEDDING_PROVIDER` | No | `openai` | Embedding backend: `openai` or `ollama` |
 | `OLLAMA_HOST` | No | `http://ollama:11434` | Ollama server URL |
 | `OLLAMA_LLM_MODEL` | No | `llama3.2:1b` | Ollama model for generation |
-| `OLLAMA_EMBEDDING_MODEL` | No | `nomic-embed-text:v1.5` | Ollama model for embeddings |
+| `OLLAMA_EMBEDDING_MODEL` | No | `all-minilm:l6` | Ollama model for embeddings |
 | `DATA_DIR` | No | `/data` (inside container) | Path to the data directory |
 | `FAISS_PATH` | No | `{DATA_DIR}/embeddings/faiss_index` | Path to the FAISS index |
 | `CORS_ORIGINS` | No | `http://localhost:8501` | Comma-separated allowed origins for the API |
@@ -310,11 +339,11 @@ Check that `OPENAI_API_KEY` is set in `.env` and has sufficient quota. The embed
 
 **Out of memory during setup**
 
-The full stack requires ~3.1 GB RAM at peak in OpenAI mode (all services starting simultaneously). Ollama mode adds ~2–3 GB for the local models (`llama3.2:1b` + `nomic-embed-text:v1.5`), for a total peak of ~5–6 GB. If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
+The full stack requires ~3.1 GB RAM at peak in OpenAI mode (all services starting simultaneously). Ollama mode adds ~2–3 GB for the local models (`llama3.2:1b` + `all-minilm:l6`), for a total peak of ~5–6 GB. If Docker OOMs, increase memory in Docker Desktop settings or run setup steps one at a time with pauses between.
 
 **FAISS index not found when starting API**
 
-The embeddings step must complete before the API starts. Run `docker compose run --rm embeddings` and confirm `data/embeddings/faiss_index/` exists before `docker compose up -d api`.
+The API needs `data/embeddings/faiss_index/` to exist before it starts. In Ollama mode, copy the prebuilt index (`cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/`) or run `docker compose run --rm embeddings` to build it yourself; in OpenAI mode you must run `embeddings`. Confirm the directory exists before `docker compose up -d api`.
 
 ---
 
