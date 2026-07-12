@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-api.txt
 
 COPY src ./src
+COPY web ./web
 COPY dashboard ./dashboard
 COPY .env.example ./.env.example
 

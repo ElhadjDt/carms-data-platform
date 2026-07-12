@@ -37,8 +37,10 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 
 | Service | URL |
 |---------|-----|
+| Ask a question | http://localhost:8000/ui/ |
+| Browse programs | http://localhost:8000/ui/programs.html |
 | API (Swagger UI) | http://localhost:8000/docs |
-| Streamlit dashboard | http://localhost:8501 |
+| Streamlit dashboard (relational data) | http://localhost:8501 |
 | Dagster (optional) | http://localhost:3000 |
 
 **Done testing?** `docker compose --profile ollama down -v --rmi all --remove-orphans` (or `make clean`) tears down every container, volume, and image this project created — see [Cleanup](#cleanup).
@@ -52,6 +54,7 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 | Database | PostgreSQL 16 |
 | ORM | SQLModel / SQLAlchemy |
 | API | FastAPI |
+| QA + program lookup UI | Static HTML/CSS/JS, served by FastAPI |
 | Dashboard | Streamlit + Plotly |
 | ETL orchestration | Dagster |
 | RAG pipeline | LangChain + FAISS + Ollama (default) or OpenAI |
@@ -205,7 +208,7 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 | `ollama` (default) | `all-minilm:l6` | 384 | `ollama` (default) | `llama3.2:1b` |
 | `openai` | `text-embedding-3-small` | 1536 | `openai` | `gpt-4o-mini` |
 
-The QA system is exposed as a REST endpoint (`POST /qa`) and through the Streamlit dashboard.
+The QA system is exposed as a REST endpoint (`POST /qa`) and through a minimal search UI at [`/ui/`](#quick-start) — a search box, the answer, and clickable links to the real CaRMS program pages it was drawn from.
 
 ![FAISS index creation](docs/imgs/faiss.png)
 
@@ -225,7 +228,7 @@ The FastAPI backend exposes 14 endpoints across two categories.
 
 Full endpoint details with example request and response values: [docs/api-endpoints.md](docs/api-endpoints.md)
 
-Interactive documentation available at **http://localhost:8000/docs** once the API is running.
+Interactive documentation available at **http://localhost:8000/docs** once the API is running. The static UI at `/ui/` (see [Quick Start](#quick-start)) is a plain client of these same endpoints — no separate backend.
 
 ---
 
