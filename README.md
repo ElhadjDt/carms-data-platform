@@ -80,66 +80,17 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 - [Ollama](https://ollama.com) (default, runs as a Docker service — no API key needed) **or** an OpenAI API key (see [OpenAI mode](#openai-mode))
 - RAM available to Docker: ~5-6 GB for Ollama mode (default), ~3.1 GB for OpenAI mode (see [memory requirements](#troubleshooting))
 
-### Step-by-step
+The commands are in [Quick Start](#quick-start) above — this is what each part of that flow is doing:
 
-**1. Configure environment**
+- **ETL** (`docker compose run --rm etl`) extracts the source ZIP archives and loads disciplines, programs, and program descriptions into Postgres.
+- **FAISS index**: the `cp -r prebuilt_faiss/ollama/...` step is instant because it copies the index already committed to the repo, instead of re-embedding ~9k program descriptions locally. Only run `docker compose run --rm embeddings` yourself if you've changed `data/raw/`.
+- **Dagster** (optional orchestration UI): `docker compose up -d dagster`.
 
-```bash
-cp .env.example .env
-# Defaults to Ollama (local, no API key). To use OpenAI instead, set
-# OPENAI_API_KEY and switch LLM_PROVIDER/EMBEDDING_PROVIDER to 'openai'
-# — see OpenAI mode below.
-```
-
-**2. Build the image**
-
-```bash
-docker compose build
-```
-
-**3. Initialize the database**
-
-```bash
-docker compose up -d db
-docker compose run --rm init-db
-```
-
-**4. Run the ETL pipeline**
-
-Extracts ZIP archives, loads disciplines and programs, and loads program descriptions into the database.
-
-```bash
-docker compose run --rm etl
-```
-
-**5. Start Ollama and get the FAISS index**
-
-Pull the two local models, then use the prebuilt FAISS index shipped in the repo — instant, no local embedding needed for the common case. The `ollama` Compose service is pinned to `ollama/ollama:0.31.2`.
-
-```bash
-docker compose --profile ollama up -d ollama
-docker exec carms_ollama ollama pull llama3.2:1b
-docker exec carms_ollama ollama pull all-minilm:l6
-
-mkdir -p ../data/embeddings/faiss_index
-cp -r prebuilt_faiss/ollama/. ../data/embeddings/faiss_index/
-#   ...or, if you've changed the data: docker compose run --rm embeddings
-```
-
-> **Speed:** The prebuilt index above covers the full CaRMS dataset shipped in this repo, so setup only needs seconds to copy it into place. If you edit `data/raw/` and need to rebuild: `docker compose run --rm embeddings` chunks program descriptions at 2000 chars (200 overlap), which keeps chunk count — and CPU-only embedding time — proportional to the actual dataset instead of over-fragmenting it. The `ollama` service also sets `OLLAMA_NUM_PARALLEL=4` so multiple chunks embed concurrently instead of one at a time; raise it (e.g. to your CPU core count) in `docker-compose.yml` for a further speedup on higher-core machines, or lower it if you're memory-constrained. Expect single-digit minutes on a modern multi-core machine for a full rebuild.
-
-**6. Start the application**
-
-```bash
-docker compose up -d api dashboard
-
-# Optional: Dagster orchestration UI
-docker compose up -d dagster
-```
+> **Speed:** `docker compose run --rm embeddings` chunks program descriptions at 2000 chars (200 overlap), which keeps chunk count — and CPU-only embedding time — proportional to the actual dataset instead of over-fragmenting it. The `ollama` service also sets `OLLAMA_NUM_PARALLEL=4` so multiple chunks embed concurrently instead of one at a time; raise it (e.g. to your CPU core count) in `docker-compose.yml` for a further speedup on higher-core machines, or lower it if you're memory-constrained. Expect single-digit minutes on a modern multi-core machine for a full rebuild.
 
 ### OpenAI mode
 
-Use OpenAI's hosted models instead of local Ollama — skip step 5 above and do this instead:
+Use OpenAI's hosted models instead of local Ollama — replace the Ollama step in Quick Start with:
 
 ```bash
 # .env: set OPENAI_API_KEY, LLM_PROVIDER=openai, EMBEDDING_PROVIDER=openai
@@ -245,7 +196,7 @@ The platform includes a Retrieval-Augmented Generation pipeline that answers nat
 1. Program descriptions from `program_document` are chunked (2000 chars, 200-char overlap)
 2. Each chunk is embedded (with `program_name`/`program_url` attached as metadata) and stored in a FAISS index
 3. At query time, the top-5 most relevant chunks are retrieved
-4. An LLM generates an answer grounded in the retrieved context, and the API returns `sources` linked directly to that answer — the real CaRMS program page URLs the answer was actually drawn from, not just prose
+4. An LLM generates an answer grounded in the retrieved context, and the API returns `sources` linked directly to that answer (see [API Reference](#api-reference))
 
 **Providers** (set via env vars — no code changes needed):
 
@@ -357,7 +308,7 @@ A production deployment architecture mapping this platform to managed AWS servic
 
 ## Future Improvements
 
-The RAG pipeline here was built hands-on — chunking strategy, provider tradeoffs (local vs. cloud embeddings/LLMs), retrieval tuning, prompt engineering — specifically to build applied, practical understanding of retrieval-augmented generation, not just theoretical familiarity. The items below are natural next steps as the project moves further toward a production-ready deployment:
+Natural next steps as the project moves further toward a production-ready deployment:
 
 - **Caching.** Every `/qa` call currently re-runs retrieval and generation from scratch, even for a repeated, identical question. Adding a response cache (e.g. Redis) keyed on the question, or memoizing embedding calls, would meaningfully cut latency and cost on repeat queries.
 - **Authentication and authorization.** Every endpoint, including `POST /qa` (which triggers an LLM call), is currently open to anyone who can reach the API. Adding API keys or OAuth is a straightforward next step.
