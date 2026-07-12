@@ -66,7 +66,7 @@ Prefer OpenAI? See [OpenAI mode](#openai-mode) — set an API key instead of run
 5. [Environment Variables](#environment-variables)
 6. [Cleanup](#cleanup)
 7. [Troubleshooting](#troubleshooting)
-8. [Known Limitations](#known-limitations)
+8. [Future Improvements](#future-improvements)
 
 ---
 
@@ -353,11 +353,11 @@ A production deployment architecture mapping this platform to managed AWS servic
 
 ---
 
-## Known Limitations
+## Future Improvements
 
-Deliberate scope boundaries for this demo — not overlooked, just out of scope for a local/portfolio deployment:
+The RAG pipeline here was built hands-on — chunking strategy, provider tradeoffs (local vs. cloud embeddings/LLMs), retrieval tuning, prompt engineering — specifically to build applied, practical understanding of retrieval-augmented generation, not just theoretical familiarity. The items below are natural next steps as the project moves further toward a production-ready deployment:
 
-- **No authentication or authorization.** Every endpoint, including `POST /qa` (which triggers an LLM call), is open to anyone who can reach the API. A real deployment would need API keys or OAuth in front of it.
-- **No rate limiting.** A client can send unlimited requests; `/qa` is the expensive one, since each call re-runs retrieval and LLM generation.
-- **No caching.** Every `/qa` call re-runs the full retrieval + generation pipeline from scratch, even for an identical, previously-asked question — there's no response cache (e.g. Redis) and no memoization of embedding or LLM calls. The FAISS index itself is loaded once at process startup and reused across requests, but that's the only caching that exists; it's not query-level caching.
-- **No TLS.** The stack serves plain HTTP; a production deployment would terminate TLS at a load balancer or reverse proxy in front of it (see [AWS Deployment](#aws-deployment)).
+- **Caching.** Every `/qa` call currently re-runs retrieval and generation from scratch, even for a repeated, identical question. Adding a response cache (e.g. Redis) keyed on the question, or memoizing embedding calls, would meaningfully cut latency and cost on repeat queries.
+- **Authentication and authorization.** Every endpoint, including `POST /qa` (which triggers an LLM call), is currently open to anyone who can reach the API. Adding API keys or OAuth is a straightforward next step.
+- **Rate limiting.** `/qa` triggers a full LLM call per request; a rate limiter (e.g. a token-bucket per client) would protect it from being overwhelmed.
+- **TLS.** The stack currently serves plain HTTP; terminating TLS at a load balancer or reverse proxy (see [AWS Deployment](#aws-deployment)) is the next step toward a real deployment.
