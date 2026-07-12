@@ -25,6 +25,11 @@ venv/
 index.faiss
 data/embeddings/
 
+# Prebuilt Ollama-mode FAISS index shipped with the repo for instant setup
+# (see carms-data-platform-demo/README quick start) - not runtime-generated output.
+!carms-data-platform-demo/prebuilt_faiss/
+!carms-data-platform-demo/prebuilt_faiss/**
+
 # -----------------------------
 # OS junk files
 # -----------------------------
