@@ -5,6 +5,12 @@ A containerized data platform built on public CaRMS residency program data. Demo
 Built as hands-on practice: turning theoretical data and AI engineering knowledge into clean, applied experience — real ETL over messy source data, schema normalization, API design, containerized orchestration, and retrieval-augmented generation with local and cloud LLMs.
 
 ---
+## Demo
+
+Short video walkthrough
+[![CaRMS Data Platform demo video](https://img.youtube.com/vi/CHbLe_reTBc/0.jpg)](https://youtu.be/CHbLe_reTBc)
+
+---
 
 ## Quick Start
 
