@@ -29,7 +29,7 @@ services:
     environment:
       OLLAMA_NUM_PARALLEL: "4"
     ports:
-      - "11434:11434"
+      - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
