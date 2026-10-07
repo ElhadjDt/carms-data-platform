@@ -6,8 +6,8 @@ Built as hands-on practice: turning theoretical data and AI engineering knowledg
 
 ---
 ## Demo
-
 Short video walkthrough
+
 [![CaRMS Data Platform demo video](https://img.youtube.com/vi/CHbLe_reTBc/0.jpg)](https://youtu.be/CHbLe_reTBc)
 
 ---
